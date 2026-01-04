@@ -3,7 +3,7 @@ import type { ModuleInstance } from './main.js'
 export function UpdateActions(self: ModuleInstance): void {
 	self.setActionDefinitions({
 		sample_action: {
-			name: 'My First Action',
+			name: 'My Second Action',
 			options: [
 				{
 					id: 'num',
@@ -15,7 +15,7 @@ export function UpdateActions(self: ModuleInstance): void {
 				},
 			],
 			callback: async (event) => {
-				console.log('Hello world!', event.options.num)
+				console.log('Hello world 1337!', event.options.num)
 			},
 		},
 	})

@@ -1,33 +1,49 @@
-import { combineRgb } from '@companion-module/base'
+import { combineRgb, CompanionFeedbackBooleanEvent, CompanionFeedbackInfo } from '@companion-module/base'
 import type { ModuleInstance } from './main.js'
 
-export function UpdateFeedbacks(self: ModuleInstance): void {
+import { FeedbackId } from './feedback.js'
+import { EntitySubscriptions } from './state.js'
+import { EntityPicker } from './choices.js'
+
+export function UpdateFeedbacks(
+	self: ModuleInstance,
+	iobObjects: ioBroker.Object[],
+	getState: () => Map<string, ioBroker.State>,
+	entitySubscriptions: EntitySubscriptions,
+): void {
+	const checkEntityOnOffState = (feedback: CompanionFeedbackBooleanEvent): boolean => {
+		const state = getState()
+		const entity = state.get(String(feedback.options.entity_id))
+		if (entity) {
+			const isOn = entity.val === true
+			const targetOn = !!feedback.options.state
+			return isOn === targetOn
+		}
+		return false
+	}
+
+	const subscribeEntityPicker = (feedback: CompanionFeedbackInfo): void => {
+		const entityId = String(feedback.options.entity_id)
+		entitySubscriptions.subscribe(entityId, feedback.id, feedback.feedbackId as FeedbackId)
+	}
+	const unsubscribeEntityPicker = (feedback: CompanionFeedbackInfo): void => {
+		const entityId = String(feedback.options.entity_id)
+		entitySubscriptions.unsubscribe(entityId, feedback.id)
+	}
+
 	self.setFeedbackDefinitions({
 		ChannelState: {
-			name: 'Example Feedback',
 			type: 'boolean',
+			name: 'Change from switch state',
+			description: 'If the switch state matches the rule, change style of the bank',
+			options: [EntityPicker(iobObjects, undefined)],
 			defaultStyle: {
-				bgcolor: combineRgb(255, 0, 0),
 				color: combineRgb(0, 0, 0),
+				bgcolor: combineRgb(0, 255, 0),
 			},
-			options: [
-				{
-					id: 'num',
-					type: 'number',
-					label: 'Test',
-					default: 5,
-					min: 0,
-					max: 10,
-				},
-			],
-			callback: (feedback) => {
-				console.log('Hello world!', feedback.options.num)
-				if (Number(feedback.options.num) > 5) {
-					return true
-				} else {
-					return false
-				}
-			},
+			callback: (feedback): boolean => checkEntityOnOffState(feedback),
+			subscribe: subscribeEntityPicker,
+			unsubscribe: unsubscribeEntityPicker,
 		},
 	})
 }
