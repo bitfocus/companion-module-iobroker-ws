@@ -27,6 +27,8 @@ export function UpdateFeedbacks(
 		entitySubscriptions.subscribe(entityId, feedback.id, feedback.feedbackId as FeedbackId)
 	}
 	const unsubscribeEntityPicker = (feedback: CompanionFeedbackInfo): void => {
+		console.log('Unsubscribe entity picker')
+
 		const entityId = String(feedback.options.entity_id)
 		entitySubscriptions.unsubscribe(entityId, feedback.id)
 	}
