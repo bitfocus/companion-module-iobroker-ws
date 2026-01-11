@@ -1,11 +1,20 @@
 import { CompanionInputFieldDropdown, DropdownChoice } from '@companion-module/base'
 
-const getNameFromIobObject = (obj: ioBroker.Object) => {
-	if (Object.prototype.hasOwnProperty.call(obj.common.name, 'en')) {
-		// @ts-expect-error name is of type 'StringOrTranslated' and the linter is making this annoying.
-		return obj.common.name.en
+const getNameFromIobObject = (obj: ioBroker.Object): string => {
+	try {
+		if (!obj.common.name) {
+			return obj._id
+		}
+
+		if (Object.prototype.hasOwnProperty.call(obj.common.name, 'en')) {
+			// @ts-expect-error name is of type 'StringOrTranslated' and the linter is making this annoying.
+			return obj.common.name.en
+		}
+		return obj.common.name as string
+	} catch (err) {
+		console.log('ERROR: ', obj, err)
+		return obj._id
 	}
-	return obj.common.name
 }
 
 function EntityOptions(iobObjects: ioBroker.Object[], prefix: string | undefined): DropdownChoice[] {

@@ -190,7 +190,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@iobroker/socket-client-backend@npm:5.0.3":
+"@iobroker/socket-client-backend@npm:^5.0.3":
   version: 5.0.3
   resolution: "@iobroker/socket-client-backend@npm:5.0.3"
   dependencies:
@@ -205,6 +205,13 @@ __metadata:
   version: 5.0.3
   resolution: "@iobroker/socket-client@npm:5.0.3"
   checksum: 10c0/7872da99707e9ae50ce635dcb95c92f2bcf6702753de41cbb0450042a65bb232d3f2eb8f465a761c5a39c2ab04f6cd317b52ac34b1644be44669edb94174b79e
+  languageName: node
+  linkType: hard
+
+"@iobroker/type-detector@npm:^5.0.9":
+  version: 5.0.9
+  resolution: "@iobroker/type-detector@npm:5.0.9"
+  checksum: 10c0/063412351bd2e9ced6e77c1ab63809c820daade73ff9ae094c53548c47f4a4ea0f5a94040a64c4e95dbf0544d9cdd31495ee692b4f91aa658c36e29a1940b552
   languageName: node
   linkType: hard
 
@@ -1620,7 +1627,8 @@ __metadata:
   dependencies:
     "@companion-module/base": "npm:~1.14.1"
     "@companion-module/tools": "npm:^2.5.0"
-    "@iobroker/socket-client-backend": "npm:5.0.3"
+    "@iobroker/socket-client-backend": "npm:^5.0.3"
+    "@iobroker/type-detector": "npm:^5.0.9"
     "@iobroker/types": "npm:^7.1.0"
     "@types/node": "npm:^22.19.3"
     debounce-fn: "npm:^6.0.0"

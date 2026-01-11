@@ -4,6 +4,8 @@ export interface ModuleConfig {
 	protocol: 'ws:' | 'wss:'
 	host: string
 	port: number
+	additionalNamespaces: string
+	loadAllAliases: boolean
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -34,6 +36,20 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			min: 1,
 			max: 65535,
 			default: 8444,
+		},
+		{
+			type: 'checkbox',
+			id: 'loadAllAliases',
+			label: 'Load all Aliases',
+			width: 4,
+			default: true,
+		},
+		{
+			type: 'textinput',
+			id: 'additionalNamespaces',
+			label: 'Additional Namespace (CSV)',
+			width: 8,
+			regex: '^[\\w\\d][\\w\\d\\.]+[\\w\\d]$',
 		},
 	]
 }

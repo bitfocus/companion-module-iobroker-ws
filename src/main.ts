@@ -18,6 +18,16 @@ function isValidIobObject(obj?: ioBroker.Object | null): obj is ioBroker.Object 
 	return obj !== null && obj !== undefined
 }
 
+export const crossProduct = <A, B>(as: readonly A[], bs: readonly B[]): Array<readonly [A, B]> => {
+	const result: Array<readonly [A, B]> = []
+	for (const a of as) {
+		for (const b of bs) {
+			result.push([a, b] as const)
+		}
+	}
+	return result
+}
+
 export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPushApi {
 	config!: ModuleConfig // Setup in init()
 
@@ -91,6 +101,25 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 		super.checkFeedbacks(...feedbackTypes)
 	}
 
+	private getObjectSubscriptions(): string[] {
+		const namespaces = this.config.additionalNamespaces
+			.split(',')
+			.map((i) => i.trim())
+			.filter((i) => i.length > 0)
+			.map((i) => `${i}.*`)
+
+		if (this.config.loadAllAliases) {
+			namespaces.push('alias.*')
+		}
+
+		// TODO: This code can lead to a user specifying namespace overlaps which would subscribe to the
+		// same object multiple times.
+		// Since the objects form a tree we can detect this and ignore sub-subscriptions.
+
+		this.log('debug', `Determined subscriptions: [${namespaces.join(', ')}].`)
+		return namespaces
+	}
+
 	async init(config: ModuleConfig): Promise<void> {
 		this.config = config
 
@@ -99,6 +128,23 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 		this.connected = await this.tryConnectAsync()
 
 		if (!this.connected || !this.client) {
+			return
+		}
+		await this.loadIobObjectsAsync()
+
+		if (!!this.iobObjectDetails && this.iobObjectDetails.length > 0) {
+			this.updateActions(this.iobObjectDetails)
+			this.updateFeedbacks(this.iobObjectDetails)
+		}
+
+		this.updatePresets()
+		this.updateVariableDefinitions()
+
+		await this.configUpdated(this.config)
+	}
+
+	private async loadIobObjectsAsync(): Promise<void> {
+		if (!this.ensureClient(this.client)) {
 			return
 		}
 
@@ -110,25 +156,21 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 		}
 
 		const startMs = Date.now()
-		const states = await this.client.getStates('alias.*')
+		const subscriptions = this.getObjectSubscriptions()
+
+		const states = (await Promise.all(subscriptions.map(async (s) => this.client!.getStates(s)))).reduce(
+			(prev, curr) => ({ ...prev, ...curr }),
+			{},
+		)
+
 		const stateInfo = await Promise.all(loadAllStateDetails(this.client, states))
 
 		this.iobObjectDetails = stateInfo.filter(isValidIobObject)
 
 		this.log(
 			'debug',
-			`Retrieved ${this.iobObjectDetails.length} (${Object.keys(states).length}) states in ${Date.now() - startMs}ms.`,
+			`Retrieved ${this.iobObjectDetails.length} (${Object.keys(states).length}) states from ${subscriptions.length} subscriptions in ${Date.now() - startMs}ms.`,
 		)
-
-		if (!!this.iobObjectDetails && this.iobObjectDetails.length > 0) {
-			this.updateActions(this.iobObjectDetails)
-			this.updateFeedbacks(this.iobObjectDetails)
-		}
-
-		this.updatePresets()
-		this.updateVariableDefinitions()
-
-		await this.configUpdated(this.config)
 	}
 
 	// When module gets deleted
@@ -263,10 +305,6 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 
 	private checkLastChangedFeedbacks() {
 		this.checkFeedbacks(FeedbackId.ReadLastUpdated)
-
-		// Workaround to receive feedback configuration changes,
-		// i.e. when the user changes the selected entity from the dropdown.
-		this.subscribeFeedbacks()
 	}
 
 	async onStateValueChange(id: string, obj: ioBroker.State | null | undefined): Promise<void> {

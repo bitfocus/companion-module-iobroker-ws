@@ -21,6 +21,6 @@
 	},
 	"legacyIds": [],
 	"manufacturer": "ioBroker",
-	"products": ["ioBroker WebSockets"],
+	"products": ["WebSockets"],
 	"keywords": ["ioBroker"]
 }
