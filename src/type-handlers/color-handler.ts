@@ -16,9 +16,7 @@ export const getColorDeviceAgnostic = (deviceId: string, type: Types, stateValue
 
 		if (!isValue(red) || !isValue(green) || !isValue(blue)) return null
 
-		const result = combineRgb(red, green, blue)
-		console.log('[GET] ', result)
-		return result
+		return combineRgb(red, green, blue)
 	}
 
 	if (type === Types.hue) {
@@ -36,8 +34,6 @@ export const setColorDeviceAgnostic = async (
 	stateValues: StateInfo[],
 	companionColor: number,
 ): Promise<void> => {
-	console.log('[SET] ', companionColor)
-
 	if (type === Types.rgb) {
 		const stateNames = new Set<string>(['RED', 'GREEN', 'BLUE'])
 		const statesToFetch = stateValues.filter((sd) => stateNames.has(sd.definition.name))
