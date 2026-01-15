@@ -61,14 +61,14 @@ export function UpdateFeedbacks(
 		const typeOfDevice = classifier.getTypeByDevice(deviceId)
 		const statesOfDevice = classifier.getStatesByDevice(deviceId)
 
+		if (!typeOfDevice || statesOfDevice.length === 0) {
+			return null
+		}
+
 		const stateValues: StateInfo[] = statesOfDevice
 			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
 			.filter((tuple) => tuple.value !== undefined)
 			.map((tuple) => ({ ...tuple, value: tuple.value! }))
-
-		if (!typeOfDevice || statesOfDevice.length === 0) {
-			return null
-		}
 
 		return getColorDeviceAgnostic(deviceId, typeOfDevice, stateValues)
 	}

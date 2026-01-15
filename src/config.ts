@@ -4,6 +4,7 @@ export interface ModuleConfig {
 	protocol: 'ws:' | 'wss:'
 	host: string
 	port: number
+	ignoreNotAcknowledged: boolean
 	additionalNamespaces: string
 	loadAllAliases: boolean
 	developmentMode: boolean
@@ -37,6 +38,13 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			min: 1,
 			max: 65535,
 			default: 8444,
+		},
+		{
+			type: 'checkbox',
+			id: 'ignoreNotAcknowledged',
+			label: 'Ignore non-acknowledged state changes',
+			width: 4,
+			default: true,
 		},
 		{
 			type: 'checkbox',

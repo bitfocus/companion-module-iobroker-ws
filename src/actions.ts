@@ -1,7 +1,7 @@
 import type { ModuleInstance } from './main.js'
 import { ToggleStatePicker } from './choices.js'
 import { IobPushApi } from './push-events.js'
-import { CompanionActionDefinitions, DropdownChoice, splitHex } from '@companion-module/base'
+import { CompanionActionDefinitions, DropdownChoice } from '@companion-module/base'
 import { LightTypes } from './utils.js'
 import ChannelDetector from '@iobroker/type-detector'
 import { DeviceClassifier } from './device-classifier.js'
@@ -47,7 +47,8 @@ export function UpdateActions(
 					return
 				}
 
-				console.log(`Light ${event.options.channel_id} triggered with color ${splitHex(event.options.color)}.`)
+				const deviceId = String(event.options.channel_id)
+				void iobPushApi.setColor(deviceId, event.options.color)
 			},
 		},
 	}

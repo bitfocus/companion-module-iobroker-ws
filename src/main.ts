@@ -16,6 +16,8 @@ import { IobPushApi } from './push-events.js'
 
 import { isValidIobObject } from './utils.js'
 import { DeviceClassifier } from './device-classifier.js'
+import { StateInfo } from './types.js'
+import { setColorDeviceAgnostic } from './type-handlers/color-handler.js'
 
 export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPushApi {
 	config!: ModuleConfig // Setup in init()
@@ -69,7 +71,7 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 	}
 
 	public async toggleState(iobId: string): Promise<void> {
-		this.log('debug', `Toggled state ${iobId}.`)
+		this.log('debug', `Toggling state ${iobId}.`)
 
 		if (!this.ensureClient(this.client)) {
 			return
@@ -93,6 +95,51 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 
 		const newVal = !oldVal.val
 		await this.client.setState(iobId, newVal)
+	}
+
+	public async getObject(iobId: string): Promise<ioBroker.Object | null> {
+		if (!this.ensureClient(this.client)) {
+			return null
+		}
+
+		const res = await this.client.getObject(iobId)
+		if (typeof res === 'undefined') {
+			return null
+		}
+
+		return res
+	}
+
+	public async setState(iobId: string, val: ioBroker.StateValue): Promise<void> {
+		if (!this.ensureClient(this.client)) {
+			return
+		}
+
+		return this.client.setState(iobId, val)
+	}
+
+	public async setColor(deviceId: string, companionColor: number): Promise<void> {
+		this.log('debug', `Setting color to ${companionColor} for ${deviceId}.`)
+
+		if (!this.deviceClassifier) {
+			return
+		}
+
+		// Reeeeefactor! See feedbacks.ts
+		const state = this.iobStateById
+		const typeOfDevice = this.deviceClassifier.getTypeByDevice(deviceId)
+		const statesOfDevice = this.deviceClassifier.getStatesByDevice(deviceId)
+
+		if (!typeOfDevice || statesOfDevice.length === 0) {
+			return
+		}
+
+		const stateValues: StateInfo[] = statesOfDevice
+			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
+			.filter((tuple) => tuple.value !== undefined)
+			.map((tuple) => ({ ...tuple, value: tuple.value! }))
+
+		return setColorDeviceAgnostic(this, deviceId, typeOfDevice, stateValues, companionColor)
 	}
 
 	public async sendMessage(instance: string, command: string, data?: unknown): Promise<void> {
@@ -320,10 +367,11 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 	}
 
 	async onStateValueChange(id: string, obj: ioBroker.State | null | undefined): Promise<void> {
-		this.log('debug', `Received event for id ${id} -> Value: ${obj?.val ?? 'N/A'}`)
-		if (!obj) {
+		if (!obj || (this.config.ignoreNotAcknowledged && !obj.ack)) {
 			return
 		}
+
+		this.log('debug', `Received event for id ${id} -> Value: ${obj.val ?? 'N/A'}`)
 
 		this.iobStateById.set(id, obj)
 
