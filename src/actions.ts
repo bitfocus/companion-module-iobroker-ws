@@ -1,64 +1,101 @@
 import type { ModuleInstance } from './main.js'
 import { ToggleStatePicker } from './choices.js'
 import { IobPushApi } from './push-events.js'
-import type { CompanionActionInfo } from '@companion-module/base'
-import ChannelDetector, { DetectOptions, Types } from '@iobroker/type-detector'
+import { CompanionActionDefinitions, DropdownChoice, splitHex } from '@companion-module/base'
+import { LightTypes } from './utils.js'
+import ChannelDetector from '@iobroker/type-detector'
+import { DeviceClassifier } from './device-classifier.js'
 
-export function UpdateActions(self: ModuleInstance, iobPushApi: IobPushApi, iobObjects: ioBroker.Object[]): void {
-	const subscribeEntityPicker = (action: CompanionActionInfo): void => {
-		const entityId = String(action.options.entity_id)
-		console.log(`Changed action: ${action.actionId} -> ${entityId}`)
-	}
+export function UpdateActions(
+	self: ModuleInstance,
+	iobPushApi: IobPushApi,
+	iobObjects: ioBroker.Object[],
+	deviceClassifier: DeviceClassifier,
+): void {
+	const typeByChannel = deviceClassifier.getTypesByChannel()
 
-	const detector = new ChannelDetector.default()
-	const objectLookup: Record<string, ioBroker.Object> = iobObjects.reduce(
-		(prev, curr) => ({ ...prev, [curr._id]: curr }),
-		{},
-	)
+	const lightIds = Object.entries(typeByChannel).filter(([_, t]) => LightTypes.has(t))
+	const lightOptions: DropdownChoice[] = lightIds.map(([id, _]) => ({ id: id, label: id }))
 
-	const baseOptions: DetectOptions = {
-		objects: objectLookup,
-		id: '%%%TEMPLATE_VALUE%%%',
-		detectOnlyChannel: true,
-		allowedTypes: [
-			Types.hue,
-			Types.cie,
-			Types.window,
-			Types.light,
-			Types.thermostat,
-			Types.humidity,
-			Types.temperature,
-		],
-	}
-	const replacementRegex = new RegExp('\\.([^.]*)$')
-	const channelIds = [...new Set(iobObjects.map((o) => o._id).map((id) => id.replace(replacementRegex, '')))]
-
-	const result: Record<string, Types> = {}
-	let usedIds: string[] = []
-	for (const channelId of channelIds) {
-		const options = {
-			...baseOptions,
-			id: channelId,
-			usedIds: usedIds,
-		}
-
-		const detectionResult = detector.detect(options)
-		if (!detectionResult || detectionResult.length === 0) {
-			continue
-		}
-
-		result[channelId] = detectionResult[0].type
-		usedIds = usedIds.concat(detectionResult[0].states.map((s) => s.id))
-	}
-
-	self.setActionDefinitions({
+	const actions: CompanionActionDefinitions = {
 		toggle: {
 			name: 'Toggle State',
 			options: [ToggleStatePicker(iobObjects, undefined)],
-			subscribe: subscribeEntityPicker,
 			callback: async (event) => {
 				void iobPushApi.toggleState(String(event.options.entity_id))
 			},
 		},
-	})
+		lightColor: {
+			name: 'Set Light Color',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'channel_id',
+					label: 'Channel',
+					default: lightOptions[0].id ?? '',
+					choices: lightOptions,
+				},
+				{
+					type: 'colorpicker',
+					id: 'color',
+					label: 'Color',
+					default: 'FFFFFF',
+				},
+			],
+			callback: (event) => {
+				if (!event.options.color || typeof event.options.color !== 'number') {
+					return
+				}
+
+				console.log(`Light ${event.options.channel_id} triggered with color ${splitHex(event.options.color)}.`)
+			},
+		},
+	}
+
+	if (self.config.developmentMode) {
+		// This action targets an instance of ioBroker.test-devices, which was build to enable testing
+		// for this companion module, see: https://github.com/OlliMartin/ioBroker.test-devices
+		// You need to have an instance of it running for the messages to be processed.
+		const stateChangeDeviceChoices: DropdownChoice[] = Object.keys(ChannelDetector.Types).map((t) => ({
+			id: t,
+			label: t,
+		}))
+
+		actions['sendStateChange'] = {
+			name: 'Simulate IoBroker State Change',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'generationType',
+					label: 'Generation Type',
+					default: 'all',
+					choices: [
+						{ id: 'all', label: 'All' },
+						{ id: 'required', label: 'required' },
+					],
+				},
+				{
+					type: 'dropdown',
+					id: 'device',
+					label: 'Target Device',
+					default: stateChangeDeviceChoices[0].id ?? '',
+					choices: stateChangeDeviceChoices,
+				},
+			],
+			callback: async (event) => {
+				const { device, generationType } = event.options
+
+				if (!device || !generationType) {
+					return
+				}
+
+				await iobPushApi.sendMessage('test-devices.0', 'SIMULATE_SINGLE_DEVICE_CHANGE', {
+					generationType,
+					device,
+				})
+			},
+		}
+	}
+
+	self.setActionDefinitions(actions)
 }

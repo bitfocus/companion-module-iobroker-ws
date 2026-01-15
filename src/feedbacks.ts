@@ -1,8 +1,8 @@
 import {
 	combineRgb,
 	CompanionFeedbackBooleanEvent,
-	CompanionFeedbackInfo,
 	CompanionFeedbackValueEvent,
+	DropdownChoice,
 	JsonValue,
 } from '@companion-module/base'
 import type { ModuleInstance } from './main.js'
@@ -10,13 +10,23 @@ import type { ModuleInstance } from './main.js'
 import { FeedbackId } from './feedback.js'
 import { EntitySubscriptions } from './state.js'
 import { EntityPicker } from './choices.js'
+import { LightTypes } from './utils.js'
+import { DeviceClassifier } from './device-classifier.js'
+import { getColorDeviceAgnostic } from './type-handlers/color-handler.js'
+import { StateInfo } from './types.js'
 
 export function UpdateFeedbacks(
 	self: ModuleInstance,
 	iobObjects: ioBroker.Object[],
+	getDeviceClassifier: () => DeviceClassifier,
 	getState: () => Map<string, ioBroker.State>,
 	entitySubscriptions: EntitySubscriptions,
 ): void {
+	const typeByChannel = getDeviceClassifier().getTypesByChannel()
+
+	const lightIds = Object.entries(typeByChannel).filter(([_, t]) => LightTypes.has(t))
+	const lightOptions: DropdownChoice[] = lightIds.map(([id, _]) => ({ id: id, label: id }))
+
 	const checkEntityOnOffState = (feedback: CompanionFeedbackBooleanEvent): boolean => {
 		const state = getState()
 		const entity = state.get(String(feedback.options.entity_id))
@@ -42,13 +52,25 @@ export function UpdateFeedbacks(
 		return typeof entity?.ts === 'number' ? entity.ts : null
 	}
 
-	const subscribeEntityPicker = (feedback: CompanionFeedbackInfo): void => {
-		const entityId = String(feedback.options.entity_id)
-		entitySubscriptions.subscribe(entityId, feedback.id, feedback.feedbackId as FeedbackId)
-	}
-	const unsubscribeEntityPicker = (feedback: CompanionFeedbackInfo): void => {
-		const entityId = String(feedback.options.entity_id)
-		entitySubscriptions.unsubscribe(entityId, feedback.id)
+	const retrieveColorValue = (feedback: CompanionFeedbackValueEvent): JsonValue => {
+		const deviceId = String(feedback.options.channel_id)
+
+		const state = getState()
+		const classifier = getDeviceClassifier()
+
+		const typeOfDevice = classifier.getTypeByDevice(deviceId)
+		const statesOfDevice = classifier.getStatesByDevice(deviceId)
+
+		const stateValues: StateInfo[] = statesOfDevice
+			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
+			.filter((tuple) => tuple.value !== undefined)
+			.map((tuple) => ({ ...tuple, value: tuple.value! }))
+
+		if (!typeOfDevice || statesOfDevice.length === 0) {
+			return null
+		}
+
+		return getColorDeviceAgnostic(deviceId, typeOfDevice, stateValues)
 	}
 
 	self.setFeedbackDefinitions({
@@ -59,11 +81,9 @@ export function UpdateFeedbacks(
 			options: [EntityPicker(iobObjects, undefined)],
 			defaultStyle: {
 				color: combineRgb(0, 0, 0),
-				bgcolor: combineRgb(0, 255, 0),
+				bgcolor: combineRgb(0, 0, 0),
 			},
 			callback: entitySubscriptions.makeFeedbackCallback(checkEntityOnOffState),
-			subscribe: subscribeEntityPicker,
-			unsubscribe: unsubscribeEntityPicker,
 		},
 		ReadValueLocal: {
 			type: 'value',
@@ -71,8 +91,6 @@ export function UpdateFeedbacks(
 			description: 'Sync a state value from ioBroker',
 			options: [EntityPicker(iobObjects, undefined)],
 			callback: entitySubscriptions.makeFeedbackCallback(retrieveCurrentValue),
-			subscribe: subscribeEntityPicker,
-			unsubscribe: unsubscribeEntityPicker,
 		},
 		[FeedbackId.ReadLastUpdated]: {
 			type: 'value',
@@ -80,8 +98,21 @@ export function UpdateFeedbacks(
 			description: 'Sync the timestamp of the last state change from ioBroker',
 			options: [EntityPicker(iobObjects, undefined)],
 			callback: entitySubscriptions.makeFeedbackCallback(retrieveLastChangeTimestamp),
-			subscribe: subscribeEntityPicker,
-			unsubscribe: unsubscribeEntityPicker,
+		},
+		ReadColorOfLight: {
+			type: 'value',
+			name: 'Read color of light',
+			description: 'Sync the color of a light',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'channel_id',
+					label: 'Channel',
+					default: lightOptions[0].id ?? '',
+					choices: lightOptions,
+				},
+			],
+			callback: entitySubscriptions.makeDeviceFeedbackCallback(retrieveColorValue),
 		},
 	})
 }

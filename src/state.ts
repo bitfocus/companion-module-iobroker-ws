@@ -1,15 +1,22 @@
 import { FeedbackId } from './feedback.js'
 import { CompanionFeedbackInfo } from '@companion-module/base'
+import { DeviceClassifier } from './device-classifier.js'
 
 export class EntitySubscriptions {
 	private readonly raiseSubscriptionsChanged: () => Promise<void> | undefined
 	private readonly getSubscribedIobIds: () => string[]
+	private readonly getDeviceClassifier: () => DeviceClassifier
 
 	private readonly data: Map<string, Map<string, FeedbackId>>
 
-	constructor(raiseSubscriptionsChanged: () => Promise<void> | undefined, getSubscribedIobIds: () => string[]) {
+	constructor(
+		raiseSubscriptionsChanged: () => Promise<void> | undefined,
+		getSubscribedIobIds: () => string[],
+		getDeviceClassifier: () => DeviceClassifier,
+	) {
 		this.raiseSubscriptionsChanged = raiseSubscriptionsChanged
 		this.getSubscribedIobIds = getSubscribedIobIds.bind(this)
+		this.getDeviceClassifier = getDeviceClassifier.bind(this)
 
 		this.data = new Map()
 	}
@@ -41,7 +48,7 @@ export class EntitySubscriptions {
 		return this.getSubscribedIobIds().includes(entityId)
 	}
 
-	private ensureSubscribed<TIn extends CompanionFeedbackInfo>(feedback: TIn): void {
+	private ensurePlainSubscribed<TIn extends CompanionFeedbackInfo>(feedback: TIn): void {
 		const entityId = String(feedback.options.entity_id)
 
 		if (entityId === null || entityId === undefined) {
@@ -55,6 +62,29 @@ export class EntitySubscriptions {
 		this.subscribe(entityId, feedback.id, feedback.feedbackId as FeedbackId)
 	}
 
+	private ensureDeviceSubscribed<TIn extends CompanionFeedbackInfo>(feedback: TIn): void {
+		const deviceId = String(feedback.options.channel_id)
+
+		if (deviceId === null || deviceId === undefined) {
+			return
+		}
+
+		// This is the somewhat lazy approach that should work for most devices. Let's see how far this gets us.
+		const missingStates = this.getDeviceClassifier()
+			.getStatesByDevice(deviceId)
+			// .filter((s) => s.required)
+			.filter((s) => !!s.id)
+			.filter((s) => !this.isEntitySubscribed(s.id))
+
+		if (missingStates.length === 0) {
+			return
+		}
+
+		for (const missingState of missingStates) {
+			this.subscribe(missingState.id, feedback.id, feedback.feedbackId as FeedbackId)
+		}
+	}
+
 	// Refer to https://github.com/bitfocus/companion/issues/3879
 	// and: https://github.com/bitfocus/companion-module-base/wiki/Subscribe-unsubscribe-flow
 	// Since subscribe is not called by option change by design, we wrap the call to the callback function
@@ -66,7 +96,13 @@ export class EntitySubscriptions {
 	public makeFeedbackCallback<TIn extends CompanionFeedbackInfo, TOut>(
 		callbackFn: (feedback: TIn) => TOut,
 	): (feedback: TIn) => TOut {
-		return EntitySubscriptions.wrapCallback(this.ensureSubscribed.bind(this), callbackFn)
+		return EntitySubscriptions.wrapCallback(this.ensurePlainSubscribed.bind(this), callbackFn)
+	}
+
+	public makeDeviceFeedbackCallback<TIn extends CompanionFeedbackInfo, TOut>(
+		callbackFn: (feedback: TIn) => TOut,
+	): (feedback: TIn) => TOut {
+		return EntitySubscriptions.wrapCallback(this.ensureDeviceSubscribed.bind(this), callbackFn)
 	}
 
 	public subscribe(entityId: string, feedbackId: string, type: FeedbackId): void {

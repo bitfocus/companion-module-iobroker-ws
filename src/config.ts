@@ -6,6 +6,7 @@ export interface ModuleConfig {
 	port: number
 	additionalNamespaces: string
 	loadAllAliases: boolean
+	developmentMode: boolean
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -50,6 +51,13 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			label: 'Additional Namespace (CSV)',
 			width: 8,
 			regex: '^[\\w\\d][\\w\\d\\.]+[\\w\\d]$',
+		},
+		{
+			type: 'checkbox',
+			id: 'developmentMode',
+			label: 'Enable Development Mode',
+			width: 4,
+			default: false,
 		},
 	]
 }

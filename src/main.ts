@@ -14,19 +14,8 @@ import debounceFn, { DebouncedFunction } from 'debounce-fn'
 import { FeedbackId } from './feedback.js'
 import { IobPushApi } from './push-events.js'
 
-function isValidIobObject(obj?: ioBroker.Object | null): obj is ioBroker.Object {
-	return obj !== null && obj !== undefined
-}
-
-export const crossProduct = <A, B>(as: readonly A[], bs: readonly B[]): Array<readonly [A, B]> => {
-	const result: Array<readonly [A, B]> = []
-	for (const a of as) {
-		for (const b of bs) {
-			result.push([a, b] as const)
-		}
-	}
-	return result
-}
+import { isValidIobObject } from './utils.js'
+import { DeviceClassifier } from './device-classifier.js'
 
 export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPushApi {
 	config!: ModuleConfig // Setup in init()
@@ -35,6 +24,7 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 
 	private iobObjectDetails: ioBroker.Object[] | null = null
 	private iobStateById: Map<string, ioBroker.State> = new Map<string, ioBroker.State>()
+	private deviceClassifier: DeviceClassifier | null = null
 
 	private subscribedEntityIds: string[] | null = null
 
@@ -57,7 +47,11 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 			after: true,
 		})
 
-		this.entitySubscriptions = new EntitySubscriptions(this.onSubscriptionChange, this.getSubscribedIobIds.bind(this))
+		this.entitySubscriptions = new EntitySubscriptions(
+			this.onSubscriptionChange,
+			this.getSubscribedIobIds.bind(this),
+			this.getDeviceClassifier.bind(this),
+		)
 
 		this.onStateValueChange = this.onStateValueChange.bind(this)
 	}
@@ -68,6 +62,10 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 
 	private getSubscribedIobIds(): string[] {
 		return this.subscribedEntityIds ?? []
+	}
+
+	private getDeviceClassifier(): DeviceClassifier {
+		return this.deviceClassifier ?? new DeviceClassifier([])
 	}
 
 	public async toggleState(iobId: string): Promise<void> {
@@ -95,6 +93,17 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 
 		const newVal = !oldVal.val
 		await this.client.setState(iobId, newVal)
+	}
+
+	public async sendMessage(instance: string, command: string, data?: unknown): Promise<void> {
+		if (!this.ensureClient(this.client)) {
+			return
+		}
+
+		const startMs = Date.now()
+		this.log('debug', `Invoking command ${instance}::${command}.`)
+		await this.client.sendTo(instance, command, data)
+		this.log('info', `Finished command ${instance}::${command} in ${Date.now() - startMs}ms.`)
 	}
 
 	public checkFeedbacks(...feedbackTypes: FeedbackId[]): void {
@@ -143,9 +152,9 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 		await this.configUpdated(this.config)
 	}
 
-	private async loadIobObjectsAsync(): Promise<void> {
+	private async loadIobObjectsAsync(): Promise<ioBroker.Object[]> {
 		if (!this.ensureClient(this.client)) {
-			return
+			return []
 		}
 
 		const loadAllStateDetails = (
@@ -171,6 +180,9 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 			'debug',
 			`Retrieved ${this.iobObjectDetails.length} (${Object.keys(states).length}) states from ${subscriptions.length} subscriptions in ${Date.now() - startMs}ms.`,
 		)
+
+		this.deviceClassifier = new DeviceClassifier(this.iobObjectDetails)
+		return this.iobObjectDetails
 	}
 
 	// When module gets deleted
@@ -325,11 +337,17 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> implements IobPus
 	}
 
 	updateActions(iobObjects: ioBroker.Object[]): void {
-		UpdateActions(this, this, iobObjects)
+		UpdateActions(this, this, iobObjects, this.getDeviceClassifier())
 	}
 
 	updateFeedbacks(iobObjects: ioBroker.Object[]): void {
-		UpdateFeedbacks(this, iobObjects, () => this.iobStateById, this.entitySubscriptions)
+		UpdateFeedbacks(
+			this,
+			iobObjects,
+			this.getDeviceClassifier.bind(this),
+			() => this.iobStateById,
+			this.entitySubscriptions,
+		)
 	}
 
 	updatePresets(): void {
