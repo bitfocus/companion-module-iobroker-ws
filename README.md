@@ -21,7 +21,7 @@ This section gives an overview of the module architecture.
 The main goal is to build an easily extensible framework, where handling different _ioBroker device types_ becomes trivial;
 Essentially just writing a class that extends from `IDeviceHandler` and registering it in the [DI Container](https://github.com/microsoft/tsyringe).
 
-The `IDeviceHandler` must provide sufficient information to register actions and feedbacks, as well as executing the callbacks.
+The `IDeviceHandler` MUST provide sufficient information to register actions and feedbacks, as well as executing the callbacks.
 
 > **IMPORTANT:** It is _crucial_ that the existing companion module file-layout rules are still followed and the code MUST be easy to review.
 > That means, that the files `feedbacks.ts` and `actions.ts` remain in place and handle the registration logic.
@@ -32,7 +32,7 @@ By requiring the `IDeviceHandler` to be able to execute callbacks, a reference t
 The handlers themselves MUST NOT be responsible to keep track of the state; Their job is to provide information about
 _which states should be subscribed to_. In contrast, it IS their responsibility to map values between the two ecosystems.
 
-As an example, a `LightDeviceHandler` must be able to transform `RGB` color values into their respective Companion representation.
+As an example, a `LightDeviceHandler` MUST be able to transform `RGB` color values into their respective Companion representation.
 
 :::mermaid
 classDiagram
@@ -86,7 +86,9 @@ getStates() Map<string, ioBroker.State>
 }
 
 class IoBrokerWsClient {
-<<Singleton>> - wsConnection: IoBrokerWS.Connection
+<<Singleton>>
+
+    - wsConnection: IoBrokerWS.Connection
 
     connectAsync(): Promise~IoBrokerWsClient~
     disconnectAsync()
@@ -125,12 +127,12 @@ IDeviceHandler ..> DeviceClassifier : Gets Devices of Type<br/>(For Action/Feedb
 **Note:** The above class diagram does not give _exact_ type names in favor of brevity. It indicates which type is meant
 by the short form of the respective NPM package. If no "namespace" is given, `@companion-module/base` is assumed.
 
-Based on the `IDeviceHandler` is must be possible to write unit/integration tests that allow verifying that device types are not
+Based on the `IDeviceHandler` it MUST be possible to write unit/integration tests that allow verifying that device types are not
 handled multiple times. A nice to have is being able to test the individual handlers by abstracting from the underlying runtime,
 i.e. companion itself.
 
 It MUST be possible to extend the `IDeviceHandler` to create Presets over the handled ioBroker types. This is desired,
-because generally speaking presets should rely only on actions defined over said types.
+because generally speaking presets SHOULD rely only on actions defined over said types.
 
 At least for debugging/development purposes it MUST be possible to enable/disable specific type handlers through the
 companion configuration. A mechanism SHOULD be implemented that uses the DI container to discover all available type handlers
