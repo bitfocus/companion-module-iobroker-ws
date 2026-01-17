@@ -14,6 +14,7 @@ export type StateInfo = {
 }
 
 export interface IDeviceHandler {
+	getName(): string
 	getHandledTypes(): Types[]
 
 	getActionDefinitions(): CompanionActionDefinitions
@@ -67,5 +68,5 @@ export interface IActionConfiguration {
 }
 
 export interface IFeedbackConfiguration {
-	updateFeedbacks(cb: (actions: CompanionFeedbackDefinitions) => void): void
+	updateFeedbacks(cb: (feedbacks: CompanionFeedbackDefinitions) => void): void
 }

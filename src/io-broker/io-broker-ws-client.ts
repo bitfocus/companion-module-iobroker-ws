@@ -2,44 +2,28 @@ import { InstanceStatus } from '@companion-module/base'
 import { Connection } from '@iobroker/socket-client-backend'
 import { inject, injectable } from 'tsyringe'
 
-import { ILogger, IMutableState, ISubscriptionState, StateInfo } from '../types.js'
+import { ILogger, IMutableState, ISubscriptionState } from '../types.js'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { ModuleConfig } from '../config.js'
-import { setColorDeviceAgnostic } from '../type-handlers/color-handler.js'
-import { DeviceClassifier } from '../device-classifier.js'
+// import { setColorDeviceAgnostic } from '../type-handlers/color-handler.js'
 import { isValidIobObject } from '../utils.js'
-import { IobPushApi } from '../push-events.js'
 
 @injectable({ token: DiTokens.SubscriptionState })
-export class IoBrokerWsClient implements IobPushApi {
-	private readonly _logger: ILogger
-	private readonly _config: ModuleConfig
-	private readonly _mutableState: IMutableState
-	private readonly _subscriptionState: ISubscriptionState
-
+export class IoBrokerWsClient {
 	private client: Connection | null = null
 	private connectPromise: Promise<boolean> | null = null
 	private feedbackCheckCb: ((...feedbackIds: string[]) => void) | null = null
-
-	private readonly _deviceClassifier: DeviceClassifier
 
 	private subscribedEntityIds: string[] | null = null
 
 	private connected: boolean = false
 
 	public constructor(
-		@inject(DiTokens.Logger) logger: ILogger,
-		@inject(DiTokens.ModuleConfiguration) config: ModuleConfig,
-		@inject(DiTokens.MutableState) mutableState: IMutableState,
-		@inject(DiTokens.SubscriptionState) subscriptionState: ISubscriptionState,
-		@inject(DeviceClassifier) deviceClassifier: DeviceClassifier,
-	) {
-		this._logger = logger
-		this._config = config
-		this._mutableState = mutableState
-		this._deviceClassifier = deviceClassifier
-		this._subscriptionState = subscriptionState
-	}
+		@inject(DiTokens.Logger) private readonly _logger: ILogger,
+		@inject(DiTokens.ModuleConfiguration) private readonly _config: ModuleConfig,
+		@inject(DiTokens.MutableState) private readonly _mutableState: IMutableState,
+		@inject(DiTokens.SubscriptionState) private readonly _subscriptionState: ISubscriptionState,
+	) {}
 
 	public async connectAsync(updateStatus: (status: InstanceStatus, msg?: string) => void): Promise<IoBrokerWsClient> {
 		await this.tryConnectAsync(updateStatus)
@@ -53,9 +37,8 @@ export class IoBrokerWsClient implements IobPushApi {
 	private async tryConnectAsync(updateStatus: (status: InstanceStatus, msg?: string) => void): Promise<boolean> {
 		const connectInternal = async () => {
 			const startMs = Date.now()
-			this._logger.logDebug(`Trying to connect to host: '${this._config.host}'.`)
 
-			updateStatus(InstanceStatus.Connecting)
+			updateStatus(InstanceStatus.Connecting, `Trying to connect to host: '${this._config.host}'.`)
 
 			this.client = new Connection({
 				protocol: this._config.protocol,
@@ -70,7 +53,7 @@ export class IoBrokerWsClient implements IobPushApi {
 				await this.client.startSocket()
 				await this.client.waitForFirstConnection()
 
-				updateStatus(InstanceStatus.Ok)
+				updateStatus(InstanceStatus.Ok, `Connected successfully in ${Date.now() - startMs}ms.`)
 				this.connected = true
 
 				return true
@@ -197,29 +180,6 @@ export class IoBrokerWsClient implements IobPushApi {
 		return this.client.setState(iobId, val)
 	}
 
-	public async setColor(deviceId: string, companionColor: number): Promise<void> {
-		this._logger.logDebug(`Setting color to ${companionColor} for ${deviceId}.`)
-
-		if (!this._deviceClassifier) {
-			return
-		}
-
-		const state = this._mutableState.getStates()
-		const typeOfDevice = this._deviceClassifier.getTypeByDevice(deviceId)
-		const statesOfDevice = this._deviceClassifier.getStatesByDevice(deviceId)
-
-		if (!typeOfDevice || statesOfDevice.length === 0) {
-			return
-		}
-
-		const stateValues: StateInfo[] = statesOfDevice
-			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
-			.filter((tuple) => tuple.value !== undefined)
-			.map((tuple) => ({ ...tuple, value: tuple.value! }))
-
-		return setColorDeviceAgnostic(this, deviceId, typeOfDevice, stateValues, companionColor)
-	}
-
 	public async sendMessage(instance: string, command: string, data?: unknown): Promise<void> {
 		if (!this.ensureClient(this.client)) {
 			return
@@ -236,6 +196,8 @@ export class IoBrokerWsClient implements IobPushApi {
 			return Promise.resolve()
 		}
 
+		this._logger.logInfo(`Subscribing to ${stateIds.length} states.`)
+
 		await this.client.subscribeState(stateIds, false, this.onStateValueChange.bind(this))
 	}
 
@@ -244,7 +206,7 @@ export class IoBrokerWsClient implements IobPushApi {
 			return
 		}
 
-		this._logger.logDebug(`Received event for id ${id} -> Value: ${obj.val ?? 'N/A'}`)
+		this._logger.logTrace(`Received event for id ${id} -> Value: ${obj.val ?? 'N/A'}`)
 
 		this._mutableState.getStates().set(id, obj)
 

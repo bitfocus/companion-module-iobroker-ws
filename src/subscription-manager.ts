@@ -13,6 +13,8 @@ export class SubscriptionManager implements ISubscriptionManager {
 	private readonly _deviceClassifier: DeviceClassifier
 	private readonly _subscriptionState: ISubscriptionState
 
+	// private readonly onSubscriptionChange:
+
 	constructor(
 		@inject(DiTokens.Logger) logger: ILogger,
 		@inject(IoBrokerWsClient) wsClient: IoBrokerWsClient,
@@ -124,7 +126,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 		this._logger.logInfo(`Subscribing to ${subscribedIds.length} ioBroker entities.`)
 		this._logger.logDebug(`Removed: [${removed.join(', ')}] Added: [${added.join(', ')}]`)
 
-		// await this._wsClient.subscribeStates(this.subscribedEntityIds, this.onStateValueChange.bind(this))
+		await this._wsClient.subscribeStates(subscribedIds)
 	}
 
 	public subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackId): void {

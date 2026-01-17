@@ -25,7 +25,7 @@ export class DeviceClassifier {
 		this.statesByDevice = statesByDevice
 
 		this._logger.logInfo(
-			`Classified ${iobObjects.length} into ${Object.keys(typeByDevice).length} devices in ${Date.now() - startMs}ms`,
+			`Classified ${iobObjects.length} objects into ${Object.keys(typeByDevice).length} devices in ${Date.now() - startMs}ms`,
 		)
 	}
 

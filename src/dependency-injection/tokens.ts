@@ -13,4 +13,7 @@ export const DiTokens = {
 	// Companion Configuration
 	ActionConfiguration: 'action-configuration',
 	FeedbackConfiguration: 'feedback-configuration',
+
+	// Device Handlers
+	DeviceHandler: 'device-handler',
 }

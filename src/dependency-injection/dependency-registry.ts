@@ -11,6 +11,7 @@ import { SubscriptionState } from '../states/subscription-state.js'
 import { SubscriptionManager } from '../subscription-manager.js'
 import { ActionConfiguration } from '../actions.js'
 import { FeedbackConfiguration } from '../feedbacks.js'
+import { DeviceHandlerRegistry } from '../device-handlers/device-handler-registry.js'
 
 @registry([
 	{ token: DependencyRegistry, useClass: DependencyRegistry, options: { lifecycle: Lifecycle.Singleton } },
@@ -39,6 +40,7 @@ import { FeedbackConfiguration } from '../feedbacks.js'
 		useClass: FeedbackConfiguration,
 		options: { lifecycle: Lifecycle.Singleton },
 	},
+	{ token: DeviceHandlerRegistry, useClass: DeviceHandlerRegistry },
 ])
 export class DependencyRegistry {
 	private static Container: DependencyContainer = container
