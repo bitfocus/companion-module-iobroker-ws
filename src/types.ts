@@ -29,6 +29,8 @@ export interface ILogger {
 	logInfo: (message: string) => void
 	logWarning: (message: string) => void
 	logError: (message: string) => void
+
+	configUpdated(): void
 }
 
 export interface ISubscriptionState {
@@ -36,7 +38,6 @@ export interface ISubscriptionState {
 	getEntityIds(): string[]
 	get(entityId: string): Map<string, FeedbackType> | undefined
 	set(entityId: string, entries: Map<string, FeedbackType>): void
-	clear(): void
 }
 
 export interface ISubscriptionManager {
@@ -49,8 +50,6 @@ export interface ISubscriptionManager {
 	): (feedback: TIn) => TOut
 
 	subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackType): void
-
-	clear(): void
 }
 
 export interface IEntityState {

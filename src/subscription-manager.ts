@@ -63,7 +63,6 @@ export class SubscriptionManager implements ISubscriptionManager {
 		// This is the somewhat lazy approach that should work for most devices. Let's see how far this gets us.
 		const missingStates = this._deviceClassifier
 			.getStatesByDevice(deviceId)
-			// .filter((s) => s.required)
 			.filter((s) => !!s.id)
 			.filter((s) => !this.isEntitySubscribed(s.id))
 
@@ -106,17 +105,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 		}
 	}
 
-	public clear(): void {
-		this._subscriptionState.clear()
-		void this.onSubscriptionChange()
-	}
-
 	private async subscribeToIobStates(feedbackType?: FeedbackType): Promise<void> {
-		if (!this._wsClient.isConnected()) {
-			this._logger.logWarning('The callback to subscribe to states was called, but no iob-ws client is available.')
-			return
-		}
-
 		const previousSubscribedEntityIds: string[] = this._wsClient.getSubscribedIds()
 		const subscribedIds = this._subscriptionState.getEntityIds() ?? []
 

@@ -6,11 +6,11 @@ import {
 	JsonValue,
 } from '@companion-module/base'
 import { Types } from '@iobroker/type-detector'
-import { IDeviceHandler, IEntityState, IioBrokerClient, ILogger, ISubscriptionManager, StateInfo } from '../types.js'
+import { IDeviceHandler, IEntityState, ILogger, ISubscriptionManager, StateInfo } from '../types.js'
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { DeviceClassifier } from '../device-classifier.js'
-import { getColorDeviceAgnostic, setColorDeviceAgnostic } from '../type-handlers/color-handler.js'
+import { ColorHandler } from '../type-handlers/color-handler.js'
 import { FeedbackType } from '../feedback-type.js'
 
 export const LightTypes: Set<Types> = new Set<Types>([Types.hue, Types.cie, Types.rgb])
@@ -21,8 +21,8 @@ export class LightHandler implements IDeviceHandler {
 		@inject(DiTokens.Logger) private readonly _logger: ILogger,
 		@inject(DiTokens.State) private readonly _entityState: IEntityState,
 		@inject(DiTokens.SubscriptionManager) private readonly _subscriptionManager: ISubscriptionManager,
-		@inject(DiTokens.IoBrokerClient) private readonly _iobClient: IioBrokerClient,
 		@inject(DeviceClassifier) private readonly _deviceClassifier: DeviceClassifier,
+		@inject(ColorHandler) private readonly _colorHandler: ColorHandler,
 	) {}
 
 	getName(): string {
@@ -111,7 +111,7 @@ export class LightHandler implements IDeviceHandler {
 			.filter((tuple) => tuple.value !== undefined)
 			.map((tuple) => ({ ...tuple, value: tuple.value! }))
 
-		return setColorDeviceAgnostic(this._iobClient, deviceId, typeOfDevice, stateValues, companionColor)
+		await this._colorHandler.setColorDeviceAgnostic(deviceId, typeOfDevice, stateValues, companionColor)
 	}
 
 	private retrieveColorValue = (feedback: CompanionFeedbackValueEvent): JsonValue => {
@@ -131,6 +131,6 @@ export class LightHandler implements IDeviceHandler {
 			.filter((tuple) => tuple.value !== undefined)
 			.map((tuple) => ({ ...tuple, value: tuple.value! }))
 
-		return getColorDeviceAgnostic(deviceId, typeOfDevice, stateValues)
+		return this._colorHandler.getColorDeviceAgnostic(deviceId, typeOfDevice, stateValues)
 	}
 }

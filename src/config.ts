@@ -8,6 +8,7 @@ export interface ModuleConfig {
 	additionalNamespaces: string
 	loadAllAliases: boolean
 	developmentMode: boolean
+	traceLogs: boolean
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -64,6 +65,14 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			type: 'checkbox',
 			id: 'developmentMode',
 			label: 'Enable Development Mode',
+			width: 4,
+			default: false,
+		},
+		{
+			type: 'checkbox',
+			id: 'traceLogs',
+			label: 'Enable Trace Logs',
+			description: 'Warning: Enabling this setting will produce a lot of logs.',
 			width: 4,
 			default: false,
 		},

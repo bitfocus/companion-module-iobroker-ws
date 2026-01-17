@@ -1,61 +1,66 @@
 import ChannelDetector, { DetectOptions, DetectorState, Types } from '@iobroker/type-detector'
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from './dependency-injection/tokens.js'
-import { ILogger } from './types.js'
+import { IEntityState, ILogger } from './types.js'
+
+const reuseCacheForMs: number = 2 * 60 * 1000 // 2 Minutes
 
 @injectable()
 export class DeviceClassifier {
-	private readonly _logger: ILogger
-
+	private lastCalculationTimestamp: number | null = null
 	private typeByDevice: Record<string, Types> | null = null
 	private statesByDevice: Record<string, DetectorState[]> | null = null
 
-	constructor(@inject(DiTokens.Logger) logger: ILogger) {
-		this._logger = logger
-	}
-
-	public populateObjects(iobObjects: ioBroker.Object[]): void {
-		const startMs = Date.now()
-		this._logger.logDebug(`Received ${iobObjects.length} ioBroker objects to classify.`)
-
-		const { typeByDevice, statesByDevice } = this.categorizeChannels(iobObjects)
-
-		this.typeByDevice = typeByDevice
-		this.statesByDevice = statesByDevice
-
-		this._logger.logInfo(
-			`Classified ${iobObjects.length} objects into ${Object.keys(typeByDevice).length} devices in ${Date.now() - startMs}ms`,
-		)
-	}
+	constructor(
+		@inject(DiTokens.Logger) private readonly _logger: ILogger,
+		@inject(DiTokens.State) private readonly _entityState: IEntityState,
+	) {}
 
 	public getTypesByChannel(): Record<string, Types> {
-		if (!this.typeByDevice) {
-			return {}
-		}
-
-		return this.typeByDevice
+		return this.categorizeChannelsCached().typeByDevice
 	}
 
 	public getTypeByDevice(deviceId: string): Types | null {
-		if (this.typeByDevice == null) {
-			return null
-		}
-
-		return Object.hasOwnProperty.call(this.typeByDevice, deviceId) ? this.typeByDevice[deviceId] : null
+		const typesByChannel = this.getTypesByChannel()
+		return Object.hasOwnProperty.call(typesByChannel, deviceId) ? typesByChannel[deviceId] : null
 	}
 
 	public getStatesByDevice(deviceId: string): DetectorState[] {
-		if (this.statesByDevice == null) {
-			return []
-		}
-
-		return Object.hasOwnProperty.call(this.statesByDevice, deviceId) ? this.statesByDevice[deviceId] : []
+		const statesByDevice = this.categorizeChannelsCached().statesByDevice
+		return Object.hasOwnProperty.call(statesByDevice, deviceId) ? statesByDevice[deviceId] : []
 	}
 
-	private categorizeChannels(iobObjects: ioBroker.Object[]): {
+	public clear(): void {
+		this.lastCalculationTimestamp = null
+		this.typeByDevice = null
+		this.statesByDevice = null
+	}
+
+	private categorizeChannelsCached(): {
 		typeByDevice: Record<string, Types>
 		statesByDevice: Record<string, DetectorState[]>
 	} {
+		if (
+			this.lastCalculationTimestamp &&
+			Date.now() < this.lastCalculationTimestamp + reuseCacheForMs &&
+			this.typeByDevice &&
+			this.statesByDevice
+		) {
+			// this._logger.logTrace(
+			// 	`Cache hit when getting device type categorization. Will reevaluate at ${new Date(this.lastCalculationTimestamp + reuseCacheForMs)}.`,
+			// )
+			return { typeByDevice: this.typeByDevice, statesByDevice: this.statesByDevice }
+		}
+
+		if (this.lastCalculationTimestamp) {
+			const expiredAt = new Date(this.lastCalculationTimestamp + reuseCacheForMs)
+			this._logger.logDebug(`Cache expired at ${expiredAt}. Recalculating device type classification.`)
+		}
+
+		const iobObjects = this._entityState.getObjects()
+		const startMs = Date.now()
+		this._logger.logDebug(`Received ${iobObjects.length} ioBroker objects to classify.`)
+
 		const detector = new ChannelDetector.default()
 		const objectLookup: Record<string, ioBroker.Object> = iobObjects.reduce(
 			(prev, curr) => ({ ...prev, [curr._id]: curr }),
@@ -91,6 +96,13 @@ export class DeviceClassifier {
 
 			usedIds = usedIds.concat(detectionResult[0].states.map((s) => s.id))
 		}
+
+		this._logger.logInfo(
+			`Classified ${iobObjects.length} objects into ${Object.keys(typeByDevice).length} devices in ${Date.now() - startMs}ms`,
+		)
+		this.lastCalculationTimestamp = Date.now()
+		this.typeByDevice = typeByDevice
+		this.statesByDevice = statesByDevice
 
 		return {
 			typeByDevice,

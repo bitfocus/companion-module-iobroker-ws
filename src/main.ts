@@ -12,7 +12,7 @@ import { DeviceClassifier } from './device-classifier.js'
 import { DependencyRegistry } from './dependency-injection/dependency-registry.js'
 import { DependencyContainer } from 'tsyringe'
 import { IoBrokerWsClient } from './io-broker/io-broker-ws-client.js'
-import { IActionConfiguration, IFeedbackConfiguration, ISubscriptionManager } from './types.js'
+import { IActionConfiguration, IFeedbackConfiguration, ILogger } from './types.js'
 import { DiTokens } from './dependency-injection/tokens.js'
 
 export class ModuleInstance extends InstanceBase<ModuleConfig> {
@@ -38,14 +38,14 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		const wsClient = await this.getIobWsClient().connectAsync(this.updateStatus.bind(this))
 		wsClient.setFeedbackCheckCb(this.checkFeedbacks.bind(this))
 
-		const iobObjects = await wsClient.loadIobObjectsAsync()
-		this._diContainer.resolve(DeviceClassifier).populateObjects(iobObjects)
+		await wsClient.loadIobObjectsAsync()
 
 		this.updateModuleConfigurations()
 
 		this.touchLastChangedFeedbacksTimeout = setInterval(this.checkLastChangedFeedbacks.bind(this), 1_000)
 
 		this.subscribeFeedbacks()
+		this.checkFeedbacks()
 	}
 
 	// When module gets deleted
@@ -81,8 +81,9 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		this.log('debug', 'Received config update.')
 
 		this.config = config
+		this.getLogger().configUpdated()
 
-		this.getSubscriptionManager().clear()
+		this.getDeviceClassifier().clear()
 		await this.disconnectAsync()
 
 		await this.init(config)
@@ -128,8 +129,12 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		return this._diContainer.resolve(IoBrokerWsClient)
 	}
 
-	private getSubscriptionManager(): ISubscriptionManager {
-		return this._diContainer.resolve(DiTokens.SubscriptionManager)
+	private getLogger(): ILogger {
+		return this._diContainer.resolve(DiTokens.Logger)
+	}
+
+	private getDeviceClassifier(): DeviceClassifier {
+		return this._diContainer.resolve(DeviceClassifier)
 	}
 
 	private getActionConfiguration(): IActionConfiguration {

@@ -79,6 +79,10 @@ export class IoBrokerWsClient implements IioBrokerClient {
 				updateStatus(InstanceStatus.Ok, `Connected successfully in ${Date.now() - startMs}ms.`)
 				this.connected = true
 
+				if (this.subscribedEntityIds) {
+					await this.subscribeStates(this.subscribedEntityIds)
+				}
+
 				return true
 			} catch (err: unknown) {
 				this.client = null

@@ -6,24 +6,28 @@ import { DiTokens } from '../dependency-injection/tokens.js'
 
 @injectable()
 export class CompanionLogger implements ILogger {
-	private module: InstanceBase<ModuleConfig>
+	private traceEnabled: boolean = false
 
-	constructor(@inject(DiTokens.Module) module: InstanceBase<ModuleConfig>) {
-		if (!module) {
-			throw new Error('ArgumentNullError: module')
-		}
+	constructor(
+		@inject(DiTokens.Module) private readonly _module: InstanceBase<ModuleConfig>,
+		@inject(DiTokens.ModuleConfigurationAccessor) private readonly _configAccessor: () => ModuleConfig,
+	) {
+		this.traceEnabled = _configAccessor().traceLogs
+	}
 
-		this.module = module
+	public configUpdated(): void {
+		this.traceEnabled = this._configAccessor().traceLogs
 	}
 
 	public log(level: LogLevel, message: string): void {
-		this.module.log(level, message)
+		this._module.log(level, message)
 	}
 
 	logTrace = (message: string): void => {
-		// return
+		if (!this.traceEnabled) {
+			return
+		}
 
-		// TODO: Config flag to enable trace logs?!
 		this.log('debug', `[TRACE] ${message}`)
 	}
 	logDebug = (message: string): void => this.log('debug', message)
