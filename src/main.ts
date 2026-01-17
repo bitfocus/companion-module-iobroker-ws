@@ -28,25 +28,6 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		this._diContainer = DependencyRegistry.CreateRegistry(this, () => this.config).Build()
 	}
 
-	// TODO
-	/* For the services resolved from DI, implement a wrapper methdo that type-checks the registration */
-	private getIobWsClient(): IoBrokerWsClient {
-		return this._diContainer.resolve(IoBrokerWsClient)
-	}
-
-	private getSubscriptionManager(): ISubscriptionManager {
-		return this._diContainer.resolve(DiTokens.SubscriptionManager)
-	}
-
-	private getActionConfiguration(): IActionConfiguration {
-		return this._diContainer.resolve(DiTokens.ActionConfiguration)
-	}
-
-	private getFeedbackConfiguration(): IFeedbackConfiguration {
-		return this._diContainer.resolve(DiTokens.FeedbackConfiguration)
-	}
-	// DI STUFF END
-
 	public checkFeedbacks(...feedbackTypes: FeedbackId[]): void {
 		super.checkFeedbacks(...feedbackTypes)
 	}
@@ -148,6 +129,24 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 	updateVariableDefinitions(): void {
 		UpdateVariableDefinitions(this)
 	}
+
+	// DI ACCESSORS
+	private getIobWsClient(): IoBrokerWsClient {
+		return this._diContainer.resolve(IoBrokerWsClient)
+	}
+
+	private getSubscriptionManager(): ISubscriptionManager {
+		return this._diContainer.resolve(DiTokens.SubscriptionManager)
+	}
+
+	private getActionConfiguration(): IActionConfiguration {
+		return this._diContainer.resolve(DiTokens.ActionConfiguration)
+	}
+
+	private getFeedbackConfiguration(): IFeedbackConfiguration {
+		return this._diContainer.resolve(DiTokens.FeedbackConfiguration)
+	}
+	// DI ACCESSORS
 }
 
 runEntrypoint(ModuleInstance, UpgradeScripts)

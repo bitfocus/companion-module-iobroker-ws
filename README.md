@@ -40,10 +40,8 @@ classDiagram
 class IDeviceHandler {
 <<interface>>
 getHandledTypes() TypeDetector.Types[]
-
-    getActionDefinitions() CompanionActionDefinitions
-    getFeedbackDefinitions() CompanionFeedbackDefinitions
-
+getActionDefinitions() CompanionActionDefinitions
+getFeedbackDefinitions() CompanionFeedbackDefinitions
 }
 
 class DeviceClassifier {
@@ -52,21 +50,53 @@ getTypesByDevice() Record~string, TypeDetector.Types~
 
 class SubscriptionState {
 <<Singleton>>
+get(entityId: string): Map~string, FeedbackType~
+set(entityId, entries: Map~string, FeedbackType~)
+
+    getEntityIds() string[]
+    getFeedbackInstanceIds(entityId: string) string[]
+
+}
+
+class ActionConfiguration {
+updateActions(setActionDefinitions: Action~CompanionActionDefinitions~)
+}
+
+class FeedbackConfiguration {
+updateFeedbacks(setFeedbackDefinitions: Action~CompanionFeedbackDefinitions~)
 }
 
 class SubscriptionManager {
 <<Singleton>>
+subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackType): void
+
+    makeFeedbackCallback(callbackFn: Func~TIn, TOut~)
+    makeDeviceFeedbackCallback(callbackFn: Func~TIn, TOut~)
 
 }
 
 class IoBrokerState {
 <<Singleton>>
+getObjects() ioBroker.Object[]
+getStates() Map<string, ioBroker.State>
+
+    #setObjects(objectDetails: ioBroker.Object[])
+    #setStates(states: Map<string, ioBroker.State>)
+
 }
 
 class IoBrokerWsClient {
-<<Singleton>>
+<<Singleton>> - wsConnection: IoBrokerWS.Connection
 
-    - wsConnection: IoBrokerWS.Connection
+    connectAsync(): Promise~IoBrokerWsClient~
+    disconnectAsync()
+
+    subscribeStates(stateIds: string[])
+    unsubscribeAll()
+
+    getObject(iobId: string) ioBroker.Object
+    setState(iobId: string, val: ioBroker.StateValue)
+    sendMessage(instance: string, command: string, data?: unknown)
 
 }
 
@@ -74,15 +104,22 @@ class MainModule {
 <<Singleton>>
 }
 
-MainModule ..> DeviceClassifier
-MainModule ..> IoBrokerWsClient : Starts
-
-IoBrokerWsClient ..> IoBrokerState : Updates<br/>(On Value Change)
-
 SubscriptionManager ..> SubscriptionState : Stores Subscriptions
 SubscriptionManager ..> IoBrokerWsClient : Registers Subscriptions
 
-IoBrokerWsClient ..> SubscriptionState : Reads Subscription Info<br/>(Which feedback to trigger)
+IoBrokerWsClient ..> IoBrokerState : Updates<br/>(On Value Change)
+IoBrokerWsClient ..> SubscriptionState : Reads Subscription Info<br/>(Get Feedback to Trigger)
+
+ActionConfiguration ..> IDeviceHandler : Resolves Device Handlers<br/>Registers Actions
+FeedbackConfiguration ..> IDeviceHandler : Resolves Device Handlers<br/>Registers Feedbacks
+
+MainModule ..> IoBrokerWsClient : Starts
+MainModule ..> ActionConfiguration : Invokes<br/>(Action Registration)
+MainModule ..> FeedbackConfiguration : Invokes<br/>(Feedback Registration)
+
+IDeviceHandler ..> SubscriptionManager : Subscribes
+IDeviceHandler ..> IoBrokerState : Gets current value<br/>(On Feedback Callback)
+IDeviceHandler ..> DeviceClassifier : Gets Devices of Type<br/>(For Action/Feedback Generation)
 :::
 
 **Note:** The above class diagram does not give _exact_ type names in favor of brevity. It indicates which type is meant
