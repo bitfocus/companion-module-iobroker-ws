@@ -21,7 +21,7 @@ export class CompanionLogger implements ILogger {
 	}
 
 	logTrace = (message: string): void => {
-		return
+		// return
 
 		// TODO: Config flag to enable trace logs?!
 		this.log('debug', `[TRACE] ${message}`)

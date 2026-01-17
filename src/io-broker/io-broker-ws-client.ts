@@ -7,12 +7,13 @@ import { DiTokens } from '../dependency-injection/tokens.js'
 import { ModuleConfig } from '../config.js'
 // import { setColorDeviceAgnostic } from '../type-handlers/color-handler.js'
 import { isValidIobObject } from '../utils.js'
+import { FeedbackId } from '../feedback.js'
 
 @injectable({ token: DiTokens.SubscriptionState })
 export class IoBrokerWsClient {
 	private client: Connection | null = null
 	private connectPromise: Promise<boolean> | null = null
-	private feedbackCheckCb: ((...feedbackIds: string[]) => void) | null = null
+	private feedbackCheckCb: ((...feedbackIds: FeedbackId[]) => void) | null = null
 
 	private subscribedEntityIds: string[] | null = null
 
@@ -193,10 +194,12 @@ export class IoBrokerWsClient {
 
 	public async subscribeStates(stateIds: string[]): Promise<void> {
 		if (!this.ensureClient(this.client)) {
+			this._logger.logWarning('Tried to subscribe to states, but client is not set or connected.')
 			return Promise.resolve()
 		}
 
 		this._logger.logInfo(`Subscribing to ${stateIds.length} states.`)
+		this.subscribedEntityIds = stateIds
 
 		await this.client.subscribeState(stateIds, false, this.onStateValueChange.bind(this))
 	}
@@ -233,7 +236,7 @@ export class IoBrokerWsClient {
 		return this.subscribedEntityIds ?? []
 	}
 
-	public setFeedbackCheckCb(cb: (...feedbackIds: string[]) => void): void {
+	public setFeedbackCheckCb(cb: (...feedbackIds: FeedbackId[]) => void): void {
 		this.feedbackCheckCb = cb
 	}
 

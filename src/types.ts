@@ -34,7 +34,7 @@ export interface ILogger {
 export interface ISubscriptionState {
 	getFeedbackInstanceIds(entityId: string): string[]
 	getEntityIds(): string[]
-	get(entityId: string): Map<string, FeedbackId>
+	get(entityId: string): Map<string, FeedbackId> | undefined
 	set(entityId: string, entries: Map<string, FeedbackId>): void
 	clear(): void
 }
@@ -49,6 +49,8 @@ export interface ISubscriptionManager {
 	): (feedback: TIn) => TOut
 
 	subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackId): void
+
+	clear(): void
 }
 
 export interface IEntityState {

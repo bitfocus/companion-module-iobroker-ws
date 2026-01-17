@@ -16,8 +16,8 @@ export class SubscriptionState implements ISubscriptionState {
 		this._logger.logTrace('Initialized subscription state.')
 	}
 
-	get(entityId: string): Map<string, FeedbackId> {
-		return this.data.get(entityId) ?? new Map<string, FeedbackId>()
+	get(entityId: string): Map<string, FeedbackId> | undefined {
+		return this.data.get(entityId)
 	}
 	set(entityId: string, entries: Map<string, FeedbackId>): void {
 		this.data.set(entityId, entries)
