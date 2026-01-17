@@ -14,7 +14,6 @@ export class DeviceClassifier {
 		this._logger = logger
 	}
 
-	// TODO Can be read from di
 	public populateObjects(iobObjects: ioBroker.Object[]): void {
 		const startMs = Date.now()
 		this._logger.logDebug(`Received ${iobObjects.length} ioBroker objects to classify.`)

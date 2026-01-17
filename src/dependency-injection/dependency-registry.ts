@@ -6,7 +6,7 @@ import type { ModuleConfig } from '../config.js'
 import { DiTokens } from './tokens.js'
 import { CompanionLogger } from '../logger/companion-logger.js'
 import { IoBrokerState } from '../states/io-broker-state.js'
-import { IEntityState, IMutableState } from '../types.js'
+import { IEntityState, IMutableState, IioBrokerClient } from '../types.js'
 import { SubscriptionState } from '../states/subscription-state.js'
 import { SubscriptionManager } from '../subscription-manager.js'
 import { ActionConfiguration } from '../actions.js'
@@ -21,6 +21,7 @@ import { DeviceHandlerRegistry } from '../device-handlers/device-handler-registr
 
 	// Websocket connection
 	{ token: IoBrokerWsClient, useClass: IoBrokerWsClient, options: { lifecycle: Lifecycle.Singleton } },
+	{ token: DiTokens.IoBrokerClient, useFactory: (di) => di.resolve(IoBrokerWsClient) as IioBrokerClient },
 
 	// State Management
 	{ token: IoBrokerState, useClass: IoBrokerState, options: { lifecycle: Lifecycle.Singleton } },

@@ -1,4 +1,4 @@
-import { IDeviceHandler, IEntityState, ISubscriptionManager } from '../types.js'
+import { IDeviceHandler, IEntityState, IioBrokerClient, ISubscriptionManager } from '../types.js'
 import { Types } from '@iobroker/type-detector'
 import {
 	CompanionActionDefinitions,
@@ -10,8 +10,7 @@ import {
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { EntityPicker, ToggleStatePicker } from '../choices.js'
-import { IoBrokerWsClient } from '../io-broker/io-broker-ws-client.js'
-import { FeedbackId } from '../feedback.js'
+import { FeedbackType } from '../feedback-type.js'
 import { combineRgb } from '@companion-module/base'
 
 @injectable()
@@ -19,7 +18,7 @@ export class GenericHandler implements IDeviceHandler {
 	constructor(
 		@inject(DiTokens.State) private readonly _entityState: IEntityState,
 		@inject(DiTokens.SubscriptionManager) private readonly _subscriptionManager: ISubscriptionManager,
-		@inject(IoBrokerWsClient) private readonly _wsClient: IoBrokerWsClient,
+		@inject(DiTokens.IoBrokerClient) private readonly _iobClient: IioBrokerClient,
 	) {}
 
 	getName(): string {
@@ -29,6 +28,7 @@ export class GenericHandler implements IDeviceHandler {
 	getHandledTypes(): Types[] {
 		return [Types.unknown]
 	}
+
 	public getActionDefinitions(): CompanionActionDefinitions {
 		const iobObjects = this._entityState.getObjects()
 
@@ -37,7 +37,7 @@ export class GenericHandler implements IDeviceHandler {
 				name: 'Toggle State',
 				options: [ToggleStatePicker(iobObjects, undefined)],
 				callback: async (event) => {
-					void this._wsClient.toggleState(String(event.options.entity_id))
+					void this._iobClient.toggleState(String(event.options.entity_id))
 				},
 			},
 		}
@@ -47,7 +47,7 @@ export class GenericHandler implements IDeviceHandler {
 		const iobObjects = this._entityState.getObjects()
 
 		return {
-			[FeedbackId.ChannelState]: {
+			[FeedbackType.ChannelState]: {
 				type: 'boolean',
 				name: 'Change from switch state',
 				description: 'If the switch state matches the rule, change style of the bank',
@@ -58,14 +58,14 @@ export class GenericHandler implements IDeviceHandler {
 				},
 				callback: this._subscriptionManager.makeFeedbackCallback(this.checkEntityOnOffState.bind(this)),
 			},
-			[FeedbackId.ReadValueLocal]: {
+			[FeedbackType.ReadValueLocal]: {
 				type: 'value',
 				name: 'Populate ioBroker state',
 				description: 'Sync a state value from ioBroker',
 				options: [EntityPicker(iobObjects, undefined)],
 				callback: this._subscriptionManager.makeFeedbackCallback(this.retrieveCurrentValue.bind(this)),
 			},
-			[FeedbackId.ReadLastUpdated]: {
+			[FeedbackType.ReadLastUpdated]: {
 				type: 'value',
 				name: 'Populate timestamp of last ioBroker state change',
 				description: 'Sync the timestamp of the last state change from ioBroker',

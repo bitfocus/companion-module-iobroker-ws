@@ -14,6 +14,9 @@ export const DiTokens = {
 	ActionConfiguration: 'action-configuration',
 	FeedbackConfiguration: 'feedback-configuration',
 
+	// IoBroker Partial Client
+	IoBrokerClient: 'iobroker-client',
+
 	// Device Handlers
 	DeviceHandler: 'device-handler',
 }

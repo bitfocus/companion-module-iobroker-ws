@@ -1,5 +1,5 @@
 import { ILogger, ISubscriptionState } from '../types.js'
-import { FeedbackId } from '../feedback.js'
+import { FeedbackType } from '../feedback-type.js'
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from '../dependency-injection/tokens.js'
 
@@ -7,7 +7,7 @@ import { DiTokens } from '../dependency-injection/tokens.js'
 export class SubscriptionState implements ISubscriptionState {
 	private readonly _logger: ILogger
 
-	private readonly data: Map<string, Map<string, FeedbackId>>
+	private readonly data: Map<string, Map<string, FeedbackType>>
 
 	constructor(@inject(DiTokens.Logger) logger: ILogger) {
 		this._logger = logger
@@ -16,10 +16,10 @@ export class SubscriptionState implements ISubscriptionState {
 		this._logger.logTrace('Initialized subscription state.')
 	}
 
-	get(entityId: string): Map<string, FeedbackId> | undefined {
+	get(entityId: string): Map<string, FeedbackType> | undefined {
 		return this.data.get(entityId)
 	}
-	set(entityId: string, entries: Map<string, FeedbackId>): void {
+	set(entityId: string, entries: Map<string, FeedbackType>): void {
 		this.data.set(entityId, entries)
 	}
 

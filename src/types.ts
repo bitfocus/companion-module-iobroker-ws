@@ -6,7 +6,7 @@ import {
 	LogLevel,
 } from '@companion-module/base'
 import { DetectorState } from '@iobroker/type-detector'
-import { FeedbackId } from './feedback.js'
+import { FeedbackType } from './feedback-type.js'
 
 export type StateInfo = {
 	definition: DetectorState
@@ -34,8 +34,8 @@ export interface ILogger {
 export interface ISubscriptionState {
 	getFeedbackInstanceIds(entityId: string): string[]
 	getEntityIds(): string[]
-	get(entityId: string): Map<string, FeedbackId> | undefined
-	set(entityId: string, entries: Map<string, FeedbackId>): void
+	get(entityId: string): Map<string, FeedbackType> | undefined
+	set(entityId: string, entries: Map<string, FeedbackType>): void
 	clear(): void
 }
 
@@ -48,7 +48,7 @@ export interface ISubscriptionManager {
 		callbackFn: (feedback: TIn) => TOut,
 	): (feedback: TIn) => TOut
 
-	subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackId): void
+	subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackType): void
 
 	clear(): void
 }
@@ -71,4 +71,11 @@ export interface IActionConfiguration {
 
 export interface IFeedbackConfiguration {
 	updateFeedbacks(cb: (feedbacks: CompanionFeedbackDefinitions) => void): void
+}
+
+export interface IioBrokerClient {
+	toggleState(iobId: string): Promise<void>
+	getObject(iobId: string): Promise<ioBroker.Object | null>
+	setState(iobId: string, val: ioBroker.StateValue): Promise<void>
+	sendMessage(instance: string, command: string, data?: unknown): Promise<void>
 }

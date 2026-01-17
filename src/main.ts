@@ -6,7 +6,7 @@ import { UpdateVariableDefinitions } from './variables.js'
 import { UpgradeScripts } from './upgrades.js'
 import { UpdatePresets } from './presets.js'
 
-import { FeedbackId } from './feedback.js'
+import { FeedbackType } from './feedback-type.js'
 
 import { DeviceClassifier } from './device-classifier.js'
 import { DependencyRegistry } from './dependency-injection/dependency-registry.js'
@@ -28,7 +28,7 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		this._diContainer = DependencyRegistry.CreateRegistry(this, this.getConfig.bind(this)).Build()
 	}
 
-	public checkFeedbacks(...feedbackTypes: FeedbackId[]): void {
+	public checkFeedbacks(...feedbackTypes: FeedbackType[]): void {
 		super.checkFeedbacks(...feedbackTypes)
 	}
 
@@ -89,7 +89,7 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 	}
 
 	private checkLastChangedFeedbacks() {
-		this.checkFeedbacks(FeedbackId.ReadLastUpdated)
+		this.checkFeedbacks(FeedbackType.ReadLastUpdated)
 	}
 
 	getConfig(): ModuleConfig {

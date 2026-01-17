@@ -2,20 +2,20 @@ import { InstanceStatus } from '@companion-module/base'
 import { Connection } from '@iobroker/socket-client-backend'
 import { inject, injectable } from 'tsyringe'
 
-import { ILogger, IMutableState, ISubscriptionState } from '../types.js'
+import { ILogger, IMutableState, IioBrokerClient, ISubscriptionState } from '../types.js'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { ModuleConfig } from '../config.js'
 // import { setColorDeviceAgnostic } from '../type-handlers/color-handler.js'
 import { isValidIobObject } from '../utils.js'
-import { FeedbackId } from '../feedback.js'
+import { FeedbackType } from '../feedback-type.js'
 
 import { setTimeout as delay } from 'node:timers/promises'
 
-@injectable({ token: DiTokens.SubscriptionState })
-export class IoBrokerWsClient {
+@injectable()
+export class IoBrokerWsClient implements IioBrokerClient {
 	private client: Connection | null = null
 	private connectPromise: Promise<boolean> | null = null
-	private feedbackCheckCb: ((...feedbackIds: FeedbackId[]) => void) | null = null
+	private feedbackCheckCb: ((...feedbackIds: FeedbackType[]) => void) | null = null
 
 	private subscribedEntityIds: string[] | null = null
 
@@ -265,7 +265,7 @@ export class IoBrokerWsClient {
 		return this.subscribedEntityIds ?? []
 	}
 
-	public setFeedbackCheckCb(cb: (...feedbackIds: FeedbackId[]) => void): void {
+	public setFeedbackCheckCb(cb: (...feedbackIds: FeedbackType[]) => void): void {
 		this.feedbackCheckCb = cb
 	}
 

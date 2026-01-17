@@ -3,7 +3,7 @@ import { IoBrokerWsClient } from './io-broker/io-broker-ws-client.js'
 import { DiTokens } from './dependency-injection/tokens.js'
 import { ILogger, ISubscriptionManager, ISubscriptionState } from './types.js'
 import { CompanionFeedbackInfo } from '@companion-module/base'
-import { FeedbackId } from './feedback.js'
+import { FeedbackType } from './feedback-type.js'
 import { DeviceClassifier } from './device-classifier.js'
 import debounceFn, { DebouncedFunction } from 'debounce-fn'
 
@@ -14,7 +14,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 	private readonly _deviceClassifier: DeviceClassifier
 	private readonly _subscriptionState: ISubscriptionState
 
-	private readonly onSubscriptionChange: DebouncedFunction<[feedbackType?: FeedbackId], Promise<void> | undefined>
+	private readonly onSubscriptionChange: DebouncedFunction<[feedbackType?: FeedbackType], Promise<void> | undefined>
 
 	constructor(
 		@inject(DiTokens.Logger) logger: ILogger,
@@ -50,7 +50,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 			return
 		}
 
-		this.subscribe(entityId, feedback.id, feedback.feedbackId as FeedbackId)
+		this.subscribe(entityId, feedback.id, feedback.feedbackId as FeedbackType)
 	}
 
 	private ensureDeviceSubscribed<TIn extends CompanionFeedbackInfo>(feedback: TIn): void {
@@ -72,7 +72,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 		}
 
 		for (const missingState of missingStates) {
-			this.subscribe(missingState.id, feedback.id, feedback.feedbackId as FeedbackId)
+			this.subscribe(missingState.id, feedback.id, feedback.feedbackId as FeedbackType)
 		}
 	}
 
@@ -111,7 +111,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 		void this.onSubscriptionChange()
 	}
 
-	private async subscribeToIobStates(feedbackType?: FeedbackId): Promise<void> {
+	private async subscribeToIobStates(feedbackType?: FeedbackType): Promise<void> {
 		if (!this._wsClient.isConnected()) {
 			this._logger.logWarning('The callback to subscribe to states was called, but no iob-ws client is available.')
 			return
@@ -124,7 +124,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 		const added = (subscribedIds ?? []).filter((eId) => !previousSubscribedEntityIds.includes(eId))
 
 		if (removed.length === 0 && added.length === 0) {
-			if (feedbackType !== FeedbackId.ReadLastUpdated) {
+			if (feedbackType !== FeedbackType.ReadLastUpdated) {
 				this._logger.logTrace(
 					`No changes to subscribed entities. Subscribed WS-Client: ${previousSubscribedEntityIds.length} | Subscription State: ${subscribedIds.length}`,
 				)
@@ -141,15 +141,15 @@ export class SubscriptionManager implements ISubscriptionManager {
 		await this._wsClient.subscribeStates(subscribedIds)
 	}
 
-	public subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackId): void {
-		let entries: Map<string, FeedbackId> | undefined = this._subscriptionState.get(entityId)
+	public subscribe(entityId: string, feedbackId: string, feedbackType: FeedbackType): void {
+		let entries: Map<string, FeedbackType> | undefined = this._subscriptionState.get(entityId)
 		if (!entries) {
-			entries = new Map<string, FeedbackId>()
+			entries = new Map<string, FeedbackType>()
 			this._subscriptionState.set(entityId, entries)
 		}
 		entries.set(feedbackId, feedbackType)
 
-		if (feedbackType !== FeedbackId.ReadLastUpdated) {
+		if (feedbackType !== FeedbackType.ReadLastUpdated) {
 			this._logger.logTrace(`Subscribing feedback ${feedbackId} to entity ${entityId}.`)
 		}
 
