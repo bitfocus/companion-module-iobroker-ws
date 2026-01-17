@@ -33,7 +33,7 @@ export class ActionConfiguration implements IActionConfiguration {
 
 		if (handlerResultCount !== mergedCount) {
 			this._logger.logWarning(
-				`Expectation not met: The number of definition should not change after merging. This indicates definition keys are reused between handlers and is a programming error.`,
+				`Expectation not met: The number of definitions should not change after merging. This indicates definition keys are reused between handlers and is a programming error.`,
 			)
 		}
 

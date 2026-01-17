@@ -45,7 +45,6 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		this.touchLastChangedFeedbacksTimeout = setInterval(this.checkLastChangedFeedbacks.bind(this), 1_000)
 
 		this.subscribeFeedbacks()
-		this.checkFeedbacks()
 	}
 
 	// When module gets deleted

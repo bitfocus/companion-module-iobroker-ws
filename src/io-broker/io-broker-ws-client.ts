@@ -5,7 +5,6 @@ import { inject, injectable } from 'tsyringe'
 import { ILogger, IMutableState, IioBrokerClient, ISubscriptionState } from '../types.js'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { ModuleConfig } from '../config.js'
-// import { setColorDeviceAgnostic } from '../type-handlers/color-handler.js'
 import { isValidIobObject } from '../utils.js'
 import { FeedbackType } from '../feedback-type.js'
 

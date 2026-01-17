@@ -1,7 +1,7 @@
 import ChannelDetector, { DetectOptions, DetectorState, Types } from '@iobroker/type-detector'
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from './dependency-injection/tokens.js'
-import { IEntityState, ILogger } from './types.js'
+import { IEntityState, ILogger, StateInfo } from './types.js'
 
 const reuseCacheForMs: number = 2 * 60 * 1000 // 2 Minutes
 
@@ -28,6 +28,27 @@ export class DeviceClassifier {
 	public getStatesByDevice(deviceId: string): DetectorState[] {
 		const statesByDevice = this.categorizeChannelsCached().statesByDevice
 		return Object.hasOwnProperty.call(statesByDevice, deviceId) ? statesByDevice[deviceId] : []
+	}
+
+	public getStateInfoByDevice(deviceId: string): { typeOfDevice: Types; stateValues: StateInfo[] } {
+		const state = this._entityState.getStates()
+
+		const typeOfDevice = this.getTypeByDevice(deviceId)
+		const statesOfDevice = this.getStatesByDevice(deviceId)
+
+		if (!typeOfDevice || statesOfDevice.length === 0) {
+			return {
+				typeOfDevice: Types.unknown,
+				stateValues: [],
+			}
+		}
+
+		const stateValues = statesOfDevice
+			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
+			.filter((tuple) => tuple.value !== undefined)
+			.map((tuple) => ({ ...tuple, value: tuple.value! }))
+
+		return { typeOfDevice, stateValues }
 	}
 
 	public clear(): void {

@@ -6,7 +6,7 @@ import {
 	JsonValue,
 } from '@companion-module/base'
 import { Types } from '@iobroker/type-detector'
-import { IDeviceHandler, IEntityState, ILogger, ISubscriptionManager, StateInfo } from '../types.js'
+import { IDeviceHandler, ILogger, ISubscriptionManager } from '../types.js'
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { DeviceClassifier } from '../device-classifier.js'
@@ -19,7 +19,6 @@ export const LightTypes: Set<Types> = new Set<Types>([Types.hue, Types.cie, Type
 export class LightHandler implements IDeviceHandler {
 	constructor(
 		@inject(DiTokens.Logger) private readonly _logger: ILogger,
-		@inject(DiTokens.State) private readonly _entityState: IEntityState,
 		@inject(DiTokens.SubscriptionManager) private readonly _subscriptionManager: ISubscriptionManager,
 		@inject(DeviceClassifier) private readonly _deviceClassifier: DeviceClassifier,
 		@inject(ColorHandler) private readonly _colorHandler: ColorHandler,
@@ -96,40 +95,14 @@ export class LightHandler implements IDeviceHandler {
 
 	private async setColor(deviceId: string, companionColor: number): Promise<void> {
 		this._logger.logDebug(`Setting color to ${companionColor} for ${deviceId}.`)
-
-		const state = this._entityState.getStates()
-
-		const typeOfDevice = this._deviceClassifier.getTypeByDevice(deviceId)
-		const statesOfDevice = this._deviceClassifier.getStatesByDevice(deviceId)
-
-		if (!typeOfDevice || statesOfDevice.length === 0) {
-			return
-		}
-
-		const stateValues: StateInfo[] = statesOfDevice
-			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
-			.filter((tuple) => tuple.value !== undefined)
-			.map((tuple) => ({ ...tuple, value: tuple.value! }))
+		const { typeOfDevice, stateValues } = this._deviceClassifier.getStateInfoByDevice(deviceId)
 
 		await this._colorHandler.setColorDeviceAgnostic(deviceId, typeOfDevice, stateValues, companionColor)
 	}
 
 	private retrieveColorValue = (feedback: CompanionFeedbackValueEvent): JsonValue => {
 		const deviceId = String(feedback.options.channel_id)
-
-		const state = this._entityState.getStates()
-
-		const typeOfDevice = this._deviceClassifier.getTypeByDevice(deviceId)
-		const statesOfDevice = this._deviceClassifier.getStatesByDevice(deviceId)
-
-		if (!typeOfDevice || statesOfDevice.length === 0) {
-			return null
-		}
-
-		const stateValues: StateInfo[] = statesOfDevice
-			.map((stateDef) => ({ definition: stateDef, value: state.get(stateDef.id) }))
-			.filter((tuple) => tuple.value !== undefined)
-			.map((tuple) => ({ ...tuple, value: tuple.value! }))
+		const { typeOfDevice, stateValues } = this._deviceClassifier.getStateInfoByDevice(deviceId)
 
 		return this._colorHandler.getColorDeviceAgnostic(deviceId, typeOfDevice, stateValues)
 	}
