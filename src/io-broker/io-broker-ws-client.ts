@@ -6,7 +6,6 @@ import { ILogger, IMutableState, IioBrokerClient, ISubscriptionState } from '../
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { ModuleConfig } from '../config.js'
 import { isValidIobObject } from '../utils.js'
-import { FeedbackType } from '../feedback-type.js'
 
 import { setTimeout as delay } from 'node:timers/promises'
 
@@ -14,7 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 export class IoBrokerWsClient implements IioBrokerClient {
 	private client: Connection | null = null
 	private connectPromise: Promise<boolean> | null = null
-	private feedbackCheckCb: ((...feedbackIds: FeedbackType[]) => void) | null = null
+	private feedbackCheckCb: ((feedbackIds: string[]) => void) | null = null
 
 	private subscribedEntityIds: string[] | null = null
 
@@ -248,11 +247,15 @@ export class IoBrokerWsClient implements IioBrokerClient {
 
 		const feedbackIds = this._subscriptionState.getFeedbackInstanceIds(id)
 
-		this.triggerFeedbackCheck(...feedbackIds)
+		this.triggerFeedbackCheck(feedbackIds)
 	}
 
-	private triggerFeedbackCheck(...feedbackIds: string[]): void {
-		this.feedbackCheckCb?.call(feedbackIds)
+	private triggerFeedbackCheck(feedbackIds: string[]): void {
+		this._logger.logTrace(`Triggering feedback check for [${feedbackIds.join(', ')}]`)
+
+		if (this.feedbackCheckCb) {
+			this.feedbackCheckCb(feedbackIds)
+		}
 	}
 
 	public unsubscribeAll(): void {
@@ -269,7 +272,7 @@ export class IoBrokerWsClient implements IioBrokerClient {
 		return this.subscribedEntityIds ?? []
 	}
 
-	public setFeedbackCheckCb(cb: (...feedbackIds: FeedbackType[]) => void): void {
+	public setFeedbackCheckCb(cb: (feedbackIds: string[]) => void): void {
 		this.feedbackCheckCb = cb
 	}
 

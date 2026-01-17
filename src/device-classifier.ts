@@ -2,8 +2,10 @@ import ChannelDetector, { DetectOptions, DetectorState, Types } from '@iobroker/
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from './dependency-injection/tokens.js'
 import { IEntityState, ILogger, StateInfo } from './types.js'
+import debounceFn from 'debounce-fn'
+import { DebouncedFunction } from 'debounce-fn'
 
-const reuseCacheForMs: number = 2 * 60 * 1000 // 2 Minutes
+const reuseCacheForMs: number = 15 * 1000
 
 @injectable()
 export class DeviceClassifier {
@@ -11,13 +13,27 @@ export class DeviceClassifier {
 	private typeByDevice: Record<string, Types> | null = null
 	private statesByDevice: Record<string, DetectorState[]> | null = null
 
+	private readonly categorizeChannelsDebounced: DebouncedFunction<
+		[],
+		{
+			typeByDevice: Record<string, Types>
+			statesByDevice: Record<string, DetectorState[]>
+		}
+	>
+
 	constructor(
 		@inject(DiTokens.Logger) private readonly _logger: ILogger,
 		@inject(DiTokens.State) private readonly _entityState: IEntityState,
-	) {}
+	) {
+		this.categorizeChannelsDebounced = debounceFn(this.categorizeChannelsCached.bind(this), {
+			wait: 20,
+			maxWait: 20,
+			before: true,
+		})
+	}
 
 	public getTypesByChannel(): Record<string, Types> {
-		return this.categorizeChannelsCached().typeByDevice
+		return this.categorizeChannelsDebounced().typeByDevice
 	}
 
 	public getTypeByDevice(deviceId: string): Types | null {
@@ -26,7 +42,7 @@ export class DeviceClassifier {
 	}
 
 	public getStatesByDevice(deviceId: string): DetectorState[] {
-		const statesByDevice = this.categorizeChannelsCached().statesByDevice
+		const statesByDevice = this.categorizeChannelsDebounced().statesByDevice
 		return Object.hasOwnProperty.call(statesByDevice, deviceId) ? statesByDevice[deviceId] : []
 	}
 
@@ -67,9 +83,9 @@ export class DeviceClassifier {
 			this.typeByDevice &&
 			this.statesByDevice
 		) {
-			// this._logger.logTrace(
-			// 	`Cache hit when getting device type categorization. Will reevaluate at ${new Date(this.lastCalculationTimestamp + reuseCacheForMs)}.`,
-			// )
+			this._logger.logTrace(
+				`Cache hit when getting device type categorization. Will reevaluate at ${new Date(this.lastCalculationTimestamp + reuseCacheForMs)}.`,
+			)
 			return { typeByDevice: this.typeByDevice, statesByDevice: this.statesByDevice }
 		}
 

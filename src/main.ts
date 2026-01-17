@@ -32,11 +32,15 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		super.checkFeedbacks(...feedbackTypes)
 	}
 
+	public checkFeedbacksByIdAsCb(feedbackIds: string[]): void {
+		super.checkFeedbacksById(...feedbackIds)
+	}
+
 	async init(config: ModuleConfig): Promise<void> {
 		this.config = config
 
 		const wsClient = await this.getIobWsClient().connectAsync(this.updateStatus.bind(this))
-		wsClient.setFeedbackCheckCb(this.checkFeedbacks.bind(this))
+		wsClient.setFeedbackCheckCb(this.checkFeedbacksByIdAsCb.bind(this))
 
 		await wsClient.loadIobObjectsAsync()
 
