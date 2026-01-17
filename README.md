@@ -50,7 +50,7 @@ getTypesByDevice() Record~string, TypeDetector.Types~
 
 class SubscriptionState {
 <<Singleton>>
-get(entityId: string): Map~string, FeedbackType~
+get(entityId: string) Map~string, FeedbackType~
 set(entityId, entries: Map~string, FeedbackType~)
 
     getEntityIds() string[]
@@ -90,7 +90,7 @@ class IoBrokerWsClient {
 
     - wsConnection: IoBrokerWS.Connection
 
-    connectAsync(): Promise~IoBrokerWsClient~
+    connectAsync() Promise~IoBrokerWsClient~
     disconnectAsync()
 
     subscribeStates(stateIds: string[])
