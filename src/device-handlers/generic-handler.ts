@@ -1,19 +1,78 @@
-import { IDeviceHandler, IEntityState, IioBrokerClient, ISubscriptionManager } from '../types.js'
+import { IDeviceHandler, IEntityState, IioBrokerClient, ILogger, ISubscriptionManager } from '../types.js'
 import { Types } from '@iobroker/type-detector'
 import {
+	combineRgb,
 	CompanionActionDefinitions,
 	CompanionActionEvent,
 	CompanionFeedbackBooleanEvent,
 	CompanionFeedbackDefinitions,
 	CompanionFeedbackValueEvent,
+	InputValue,
+	JsonPrimitive,
 	JsonValue,
 } from '@companion-module/base'
 import { inject, injectable } from 'tsyringe'
 import { DiTokens } from '../dependency-injection/tokens.js'
 import { EntityPicker, ToggleStatePicker } from '../choices.js'
 import { FeedbackType } from '../feedback-type.js'
-import { combineRgb } from '@companion-module/base'
 import { ActionType } from '../action-type.js'
+import { isValue, raiseActionError } from '../utils.js'
+
+const isWriteable = (o: ioBroker.Object): boolean => {
+	return !!o.common.write
+}
+
+const isBooleanW = (o: ioBroker.Object): boolean => {
+	return isWriteable(o) && o.common.type === 'boolean'
+}
+
+const isNumberW = (o: ioBroker.Object): boolean => {
+	return isWriteable(o) && o.common.type === 'number'
+}
+
+const isStringW = (o: ioBroker.Object): boolean => {
+	return isWriteable(o) && o.common.type === 'string'
+}
+
+const parseOrThrow = <TVt extends JsonPrimitive>(
+	event: CompanionActionEvent,
+	entityVar: InputValue | undefined,
+	valueVar: InputValue | undefined,
+	expectType: string,
+	parseCb: (v: InputValue) => TVt,
+): TVt | never => {
+	const tryParse = (v: InputValue): TVt => {
+		let parsed: TVt
+
+		try {
+			parsed = parseCb(v)
+		} catch {
+			raiseActionError(event, `Could not parse provided value '${v}' as ${expectType}. Please check your input.`)
+		}
+
+		if (typeof parsed !== expectType) {
+			raiseActionError(event, `Could not parse provided value '${v}' as ${expectType}. Please check your input.`)
+		}
+
+		return parsed
+	}
+
+	if (!!entityVar && isValue<InputValue>(valueVar)) {
+		return tryParse(valueVar)
+	}
+
+	if (!entityVar) {
+		raiseActionError(
+			event,
+			`Invalid configuration. Entity must be provided for ${expectType} value type but was: '${entityVar}'.`,
+		)
+	}
+
+	raiseActionError(
+		event,
+		`Invalid configuration. Value must be provided for ${expectType} value type but was: '${valueVar}'.`,
+	)
+}
 
 @injectable()
 export class GenericHandler implements IDeviceHandler {
@@ -24,6 +83,7 @@ export class GenericHandler implements IDeviceHandler {
 	 * @param _iobClient - An ioBroker websocket client to interact with the backend
 	 */
 	constructor(
+		@inject(DiTokens.Logger) private readonly _logger: ILogger,
 		@inject(DiTokens.State) private readonly _entityState: IEntityState,
 		@inject(DiTokens.SubscriptionManager) private readonly _subscriptionManager: ISubscriptionManager,
 		@inject(DiTokens.IoBrokerClient) private readonly _iobClient: IioBrokerClient,
@@ -50,6 +110,69 @@ export class GenericHandler implements IDeviceHandler {
 				callback: async (event) => {
 					void this._iobClient.toggleState(String(event.options.entity_id))
 				},
+			},
+			[ActionType.SetValue]: {
+				name: 'Set Value',
+				options: [
+					{
+						id: 'value_type',
+						type: 'dropdown',
+						label: 'Value Type',
+						default: 'string',
+						choices: [
+							{
+								id: 'string',
+								label: 'String',
+							},
+							{
+								id: 'number',
+								label: 'Number',
+							},
+							{
+								id: 'boolean',
+								label: 'Boolean',
+							},
+						],
+					},
+					EntityPicker(iobObjects, undefined, 'string_entity_id', `$(options:value_type) == 'string'`, isStringW),
+					{
+						id: 'string_value',
+						type: 'textinput',
+						label: 'Value',
+						useVariables: true,
+						multiline: true,
+						isVisibleExpression: `$(options:value_type) == 'string'`,
+					},
+					EntityPicker(iobObjects, undefined, 'number_entity_id', `$(options:value_type) == 'number'`, isNumberW),
+					{
+						// We're purposefully not using type=number here, because it forces us to
+						// define min+max which does not make sense for ioBroker states.
+						id: 'number_value',
+						type: 'textinput',
+						label: 'Value',
+						regex: '^\\d+$',
+						isVisibleExpression: `$(options:value_type) == 'number'`,
+					},
+					EntityPicker(iobObjects, undefined, 'bool_entity_id', `$(options:value_type) == 'boolean'`, isBooleanW),
+					{
+						id: 'bool_value',
+						type: 'dropdown',
+						label: 'Value',
+						choices: [
+							{
+								id: 'true',
+								label: 'true',
+							},
+							{
+								id: 'false',
+								label: 'false',
+							},
+						],
+						default: 'true',
+						isVisibleExpression: `$(options:value_type) == 'boolean'`,
+					},
+				],
+				callback: this.actSetValue.bind(this),
 			},
 			[ActionType.SendMessage]: {
 				name: 'Send Message to Adapter',
@@ -85,6 +208,7 @@ export class GenericHandler implements IDeviceHandler {
 						id: 'data',
 						default: '{}',
 						useVariables: true,
+						multiline: true,
 						isVisibleExpression: '$(options:include_data)',
 					},
 					{
@@ -98,6 +222,34 @@ export class GenericHandler implements IDeviceHandler {
 				callback: this.actSendMessageToAdapter.bind(this),
 			},
 		}
+	}
+
+	private async actSetValue(event: CompanionActionEvent): Promise<void> {
+		const { value_type, string_entity_id, string_value, number_entity_id, number_value, bool_entity_id, bool_value } =
+			event.options
+
+		let value: JsonPrimitive | null = null
+		let entityId: string = ''
+		let actualType: ioBroker.CommonType | null = null
+
+		if (value_type === 'string') {
+			value = parseOrThrow(event, string_entity_id, string_value, 'string', (v) => String(v))
+			entityId = String(string_entity_id)
+			actualType = 'string'
+		} else if (value_type === 'number') {
+			value = parseOrThrow(event, number_entity_id, number_value, 'number', (v) => Number.parseFloat(String(v)))
+			entityId = String(number_entity_id)
+			actualType = 'number'
+		} else if (value_type === 'boolean') {
+			value = parseOrThrow(event, bool_entity_id, bool_value, 'boolean', (v) => JSON.parse(String(v)))
+			entityId = String(bool_entity_id)
+			actualType = 'boolean'
+		} else {
+			raiseActionError(event, `Unsupported value type '${value_type}' provided.`)
+		}
+
+		this._logger.logTrace(`Setting value of entity '${entityId}' to '${value}'.`)
+		await this._iobClient.setState(entityId, value, actualType)
 	}
 
 	private async actSendMessageToAdapter(event: CompanionActionEvent): Promise<void> {
@@ -116,9 +268,10 @@ export class GenericHandler implements IDeviceHandler {
 			try {
 				dataParsed = JSON.parse(data)
 			} catch (err) {
-				throw new Error(
-					`[${ActionType.SendMessage}] Could not parse provided payload '${data}' as json. Please check your input.`,
-					{ cause: err },
+				raiseActionError(
+					event,
+					`Could not parse provided payload '${data}' as json. Please check your input.`,
+					err as Error,
 				)
 			}
 		}

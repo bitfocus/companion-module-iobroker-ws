@@ -17,8 +17,16 @@ const getNameFromIobObject = (obj: ioBroker.Object): string => {
 	}
 }
 
-function EntityOptions(iobObjects: ioBroker.Object[], prefix: string | undefined): DropdownChoice[] {
-	const entities = iobObjects.filter((ent) => prefix === undefined || ent._id.indexOf(`${prefix}.`) === 0)
+function EntityOptions(
+	iobObjects: ioBroker.Object[],
+	prefix?: string,
+	objectFilter?: (o: ioBroker.Object) => boolean,
+): DropdownChoice[] {
+	objectFilter ??= (_) => true
+
+	const entities = iobObjects
+		.filter(objectFilter)
+		.filter((ent) => prefix === undefined || ent._id.indexOf(`${prefix}.`) === 0)
 
 	return entities
 		.map((ent) => ({
@@ -36,16 +44,26 @@ function EntityOptions(iobObjects: ioBroker.Object[], prefix: string | undefined
  * Creates an input selector (dropdown) over all provided ioBroker objects.
  * @param iobObjects - The ioBroker objects to use
  * @param prefix - Optional. Prefix to filter object ids (full-tree form) for
+ * @param idOverride - Optional. Overrides the default `entity_id` id for the dropdown.
+ * @param isVisibleExpression - Optional. Expression to apply to visibility modifier.
+ * @param objectFilter - Optional. A filter to apply to limit the objects used in the dropdown.
  */
-export function EntityPicker(iobObjects: ioBroker.Object[], prefix: string | undefined): CompanionInputFieldDropdown {
-	const choices = EntityOptions(iobObjects, prefix)
+export function EntityPicker(
+	iobObjects: ioBroker.Object[],
+	prefix?: string,
+	idOverride?: string,
+	isVisibleExpression?: string,
+	objectFilter?: (o: ioBroker.Object) => boolean,
+): CompanionInputFieldDropdown {
+	const choices = EntityOptions(iobObjects, prefix, objectFilter)
 
 	return {
 		type: 'dropdown',
 		label: 'Entity',
-		id: 'entity_id',
+		id: idOverride ?? 'entity_id',
 		default: choices[0]?.id ?? '',
 		choices: choices,
+		isVisibleExpression,
 	}
 }
 
