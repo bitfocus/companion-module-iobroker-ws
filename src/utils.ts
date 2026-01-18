@@ -41,8 +41,6 @@ export function getNumByName(stateValues: StateInfo[], name: string): number | n
 /**
  * Validates that any object is not null or undefined.
  * @param vt - The value type to test
- *
- *
  */
 export function isValue<VT>(vt: VT | undefined | null): vt is VT {
 	return !(vt === null || vt === undefined)
