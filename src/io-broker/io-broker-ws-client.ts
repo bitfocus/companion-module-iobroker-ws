@@ -308,7 +308,12 @@ export class IoBrokerWsClient implements IioBrokerClient {
 
 		const stateMeta = await this.getObject(iobId)
 
-		if (stateMeta === null || (type && stateMeta.common.type !== type)) {
+		if (stateMeta === null) {
+			this._logger.logWarning(`State metadata for id ${iobId} could not be retrieved from the server.`)
+			return null
+		}
+
+		if (type && stateMeta.common.type !== type) {
 			this._logger.logWarning(
 				`Expectation not met: State should have type ${type} but ${stateMeta?.common.type ?? 'N/A'} was retrieved from the server.`,
 			)

@@ -44,7 +44,7 @@ const parseOrThrow = <TVt extends JsonPrimitive>(
 	valueVar: InputValue | undefined,
 	expectType: string,
 	parseCb: (v: InputValue) => TVt,
-): TVt | never => {
+): TVt => {
 	const tryParse = (v: InputValue): TVt => {
 		let parsed: TVt
 
@@ -160,7 +160,6 @@ export class GenericHandler implements IDeviceHandler {
 						id: 'number_value',
 						type: 'textinput',
 						label: 'Value',
-						regex: '^\\d+$',
 						isVisibleExpression: `$(options:value_type) == 'number'`,
 					},
 					EntityPicker(iobObjects, undefined, 'bool_entity_id', `$(options:value_type) == 'boolean'`, isBooleanW),
@@ -204,7 +203,7 @@ export class GenericHandler implements IDeviceHandler {
 						id: 'adapter_instance',
 						type: 'textinput',
 						label: 'Instance',
-						description: 'Choose the adapter instance to send to, for example matter.0',
+						description: 'Enter the adapter instance to send to, for example matter.0',
 					},
 					{
 						id: 'command',
@@ -221,7 +220,7 @@ export class GenericHandler implements IDeviceHandler {
 					{
 						type: 'static-text',
 						label: 'Payload Configuration',
-						value: 'Below you can configure the payload to be send along with the message',
+						value: 'Below you can configure the payload to be sent along with the message',
 						id: 'data-description',
 						isVisibleExpression: '$(options:include_data)',
 					},
