@@ -212,13 +212,21 @@ export interface IioBrokerClient {
 	getObject(iobId: string): Promise<ioBroker.Object | null>
 
 	/**
+	 * Retrieves the _current_ state from the remote ioBroker server
+	 * @param iobId - The fully qualified ioBroker object id
+	 * @param type - Optional. If provided, the returned state value will be checked for its type. If the expectation is not met, null is returned. Requires one more round trip to the ioBroker server.
+	 */
+	getState(iobId: string, type?: ioBroker.CommonType): Promise<ioBroker.State | null>
+
+	/**
 	 * Sets the state of the given ioBroker state on the remote ioBroker server
 	 * @param iobId - The fully qualified ioBroker object id
 	 * @param val - The value to set
+	 * @param type - Optional. The expected type of the object. If this expectation is not met, the update will not be executed. Requires one more round trip to the ioBroker server.
 	 * @remarks
 	 * All updates to states on the remote server are _not_ acknowledged.
 	 */
-	setState(iobId: string, val: ioBroker.StateValue): Promise<void>
+	setState(iobId: string, val: ioBroker.StateValue, type?: ioBroker.CommonType): Promise<void>
 
 	/**
 	 * Sends a message to the given instance with the provided command and data.

@@ -1,4 +1,5 @@
 import { StateInfo } from './types.js'
+import { CompanionActionEvent } from '@companion-module/base'
 
 /**
  * Validates that an ioBroker object is not null or undefined.
@@ -44,4 +45,14 @@ export function getNumByName(stateValues: StateInfo[], name: string): number | n
  */
 export function isValue<VT>(vt: VT | undefined | null): vt is VT {
 	return !(vt === null || vt === undefined)
+}
+
+/**
+ * Raises an action error with a standardized message.
+ * @param event - The companion action event that caused the error
+ * @param message - The message to include in the error
+ * @param cause - Optional. The underlying cause of the error
+ */
+export function raiseActionError(event: CompanionActionEvent, message: string, cause?: Error): never {
+	throw new Error(`[${event.actionId}] ${message}`, { cause })
 }
