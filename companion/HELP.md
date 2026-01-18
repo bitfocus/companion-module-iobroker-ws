@@ -16,7 +16,7 @@ If you enabled the setting `Secure(HTTPS)` in the adapter configuration, you nee
 | Port                                  | The port on which the adapter is listening.                                                                                                                          |
 | Ignore non-acknowledged state changes | Default: `true`. If disabled, non-acknowledged state changes will - for example - trigger feedback updates in the module. This is usually _not_ desired.             |
 | Load all Aliases                      | Default: `true`. If enabled, will retrieve object and state metadata for all `alias.*` objects                                                                       |
-| Additional Namesace (CSV)             | A comma-separated list of additional namespaces to monitor. By default, only metadata within the `alias` namespaces is retrieved.                                    |
+| Additional Namespace (CSV)            | A comma-separated list of additional namespaces to monitor. By default, only metadata within the `alias` namespaces is retrieved.                                    |
 | Enable Development Mode               | Default: `false`. If enabled, additional development-related actions will be available.                                                                              |
 | Enable Trace Logs                     | Default: `false`. If enabled, additional trace logs will be output to help with debugging issues. Enable with caution, on a busy system this produces a lot of logs. |
 
@@ -26,10 +26,10 @@ The following _generic_ actions are available:
 
 | Action       | Applicable Entities                        | Description                                                                                      |
 | ------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| Toggle       | Writeable; `boolean`                       | Toggles the value of a specified ioBroker state by retrieving the current value and negating it. |
+| Toggle       | Writable; `boolean`                        | Toggles the value of a specified ioBroker state by retrieving the current value and negating it. |
 | Set State    | Writable; `boolean`, `number` and `string` | Sets the value of a specified ioBroker state.                                                    |
-| Press Button | Writeable; `boolean` with role = `button`  | 'Presses' the button                                                                             |
-| Increment    | Writeable; `number`                        | Increments the value of a specified ioBroker state by a constant value or companion variable.    |
+| Press Button | Writable; `boolean` with role = `button`   | 'Presses' the button                                                                             |
+| Increment    | Writable; `number`                         | Increments the value of a specified ioBroker state by a constant value or companion variable.    |
 | Send Message | `N/A`                                      | Sends a message to a specified instance of an ioBroker adapter.                                  |
 
 **Available Feedbacks**
@@ -43,5 +43,4 @@ The following _generic_ actions are available:
 **Note**
 
 This is a beta release of the module. Not all available actions and feedbacks are fully documented.
-Partially actions are available to handle lights, but there API (i.e. configuration) might change with the next release.
-For more information refer to the [Roadmap](https://github.com/bitfocus/companion-module-iobroker-ws?tab=readme-ov-file#roadmap~~~~) of this module.
+For more information refer to the [Roadmap](https://github.com/bitfocus/companion-module-iobroker-ws?tab=readme-ov-file#roadmap) of this module.
