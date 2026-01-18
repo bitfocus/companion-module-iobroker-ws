@@ -122,7 +122,11 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 	 *
 	 * To work around this said feedback types are periodically checked.
 	 */
-	private checkLastChangedFeedbacks() {
+	private checkLastChangedFeedbacks(): void {
+		if (!this.getIobWsClient().isConnected()) {
+			return
+		}
+
 		this.checkFeedbacks(FeedbackType.ReadLastUpdated)
 	}
 
