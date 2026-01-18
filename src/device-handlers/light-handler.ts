@@ -15,6 +15,14 @@ import { FeedbackType } from '../feedback-type.js'
 
 export const LightTypes: Set<Types> = new Set<Types>([Types.hue, Types.cie, Types.rgb])
 
+/**
+ * #### IMPORTANT ####
+ *
+ * WORK IN PROGRESS.
+ *
+ * @remarks
+ * This device handler is not registered in the DI registry, so it will not provide any actions or feedbacks.
+ */
 @injectable()
 export class LightHandler implements IDeviceHandler {
 	/**

@@ -141,3 +141,22 @@ and present them in a multi-select style list.
 Furthermore `IDeviceHandler` instances MUST NOT generate actions/feedbacks/presets if there are no matching devices available
 on ioBroker site. If this requirement proves to be confusing for the end-user, a configuration switch SHOULD be added,
 which allows to hide actions etc. in case they have no targe devices.
+
+# Roadmap
+
+This section briefly describes the planned feature.
+
+## Authentication
+
+Due to missing functionality in downstream projects, authentication via websockets is currently not achievable.
+However, a process was started to add this functionality both on the `Native Web socket` adapter end as well as in the websocket client.
+
+## Device-Specific Handlers
+
+The following device handlers are planned to be implemented in the upcoming release:
+
+- Light Control, especially color handling
+- Contact Sensors
+- Thermostats
+
+Nonetheless, the existing actions and feedbacks cover all possible functionality, albeit a bit more effort to configure.
