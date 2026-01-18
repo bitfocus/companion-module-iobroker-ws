@@ -34,6 +34,10 @@ const isStringW = (o: ioBroker.Object): boolean => {
 	return isWriteable(o) && o.common.type === 'string'
 }
 
+const isButtonW = (o: ioBroker.Object): boolean => {
+	return isWriteable(o) && o.common.type === 'boolean' && o.common.role === 'button'
+}
+
 const parseOrThrow = <TVt extends JsonPrimitive>(
 	event: CompanionActionEvent,
 	entityVar: InputValue | undefined,
@@ -78,6 +82,7 @@ const parseOrThrow = <TVt extends JsonPrimitive>(
 export class GenericHandler implements IDeviceHandler {
 	/**
 	 * Initializes a new instance of {@link GenericHandler}
+	 * @param _logger - A logger
 	 * @param _entityState - The local (cached) ioBroker state (read-only)
 	 * @param _subscriptionManager - The subscription manager used to construct feedback callbacks
 	 * @param _iobClient - An ioBroker websocket client to interact with the backend
@@ -110,6 +115,11 @@ export class GenericHandler implements IDeviceHandler {
 				callback: async (event) => {
 					void this._iobClient.toggleState(String(event.options.entity_id))
 				},
+			},
+			[ActionType.PressButton]: {
+				name: 'Press Button',
+				options: [EntityPicker(iobObjects, undefined, undefined, undefined, isButtonW)],
+				callback: this.actPressButton.bind(this),
 			},
 			[ActionType.SetValue]: {
 				name: 'Set Value',
@@ -146,7 +156,7 @@ export class GenericHandler implements IDeviceHandler {
 					EntityPicker(iobObjects, undefined, 'number_entity_id', `$(options:value_type) == 'number'`, isNumberW),
 					{
 						// We're purposefully not using type=number here, because it forces us to
-						// define min+max which does not make sense for ioBroker states.
+						// define min+max which does not make sense for ioBroker number states.
 						id: 'number_value',
 						type: 'textinput',
 						label: 'Value',
@@ -173,6 +183,19 @@ export class GenericHandler implements IDeviceHandler {
 					},
 				],
 				callback: this.actSetValue.bind(this),
+			},
+			[ActionType.Increment]: {
+				name: 'Increment/Decrement Value',
+				options: [
+					EntityPicker(iobObjects, undefined, undefined, undefined, isNumberW),
+					{
+						id: 'increment_decrement',
+						label: 'Value Change',
+						type: 'textinput',
+						useVariables: true,
+					},
+				],
+				callback: this.actIncrementDecrementValue.bind(this),
 			},
 			[ActionType.SendMessage]: {
 				name: 'Send Message to Adapter',
@@ -224,6 +247,12 @@ export class GenericHandler implements IDeviceHandler {
 		}
 	}
 
+	private async actPressButton(event: CompanionActionEvent): Promise<void> {
+		const { entity_id } = event.options
+		this._logger.logTrace(`Pressing button of entity '${entity_id}'.`)
+		await this._iobClient.setState(String(entity_id), true, 'boolean')
+	}
+
 	private async actSetValue(event: CompanionActionEvent): Promise<void> {
 		const { value_type, string_entity_id, string_value, number_entity_id, number_value, bool_entity_id, bool_value } =
 			event.options
@@ -238,6 +267,11 @@ export class GenericHandler implements IDeviceHandler {
 			actualType = 'string'
 		} else if (value_type === 'number') {
 			value = parseOrThrow(event, number_entity_id, number_value, 'number', (v) => Number.parseFloat(String(v)))
+
+			if (isNaN(value)) {
+				raiseActionError(event, `Could not parse provided value '${number_value}' as number. Please check your input.`)
+			}
+
 			entityId = String(number_entity_id)
 			actualType = 'number'
 		} else if (value_type === 'boolean') {
@@ -250,6 +284,39 @@ export class GenericHandler implements IDeviceHandler {
 
 		this._logger.logTrace(`Setting value of entity '${entityId}' to '${value}'.`)
 		await this._iobClient.setState(entityId, value, actualType)
+	}
+
+	private async actIncrementDecrementValue(event: CompanionActionEvent): Promise<void> {
+		const { entity_id, increment_decrement } = event.options
+
+		const valueChange = parseOrThrow(event, entity_id, increment_decrement, 'number', (v) =>
+			Number.parseFloat(String(v)),
+		)
+
+		if (isNaN(valueChange)) {
+			raiseActionError(
+				event,
+				`Could not parse provided value '${increment_decrement}' as number. Please check your input.`,
+			)
+		}
+
+		const currentValue = await this._iobClient.getState(String(entity_id), 'number')
+
+		if (!currentValue) {
+			raiseActionError(
+				event,
+				`Could not retrieve current value of entity '${entity_id}' for increment/decrement operation or object has invalid state (type not number).`,
+			)
+		}
+
+		const newValue = (currentValue.val as number) + valueChange
+
+		this._logger.logTrace(
+			`Changing value of entity '${entity_id}' from '${currentValue.val}' by '${valueChange}' to '${newValue}'.`,
+		)
+
+		// No need to pass the type expectation here, we already checked it above.
+		await this._iobClient.setState(String(entity_id), newValue)
 	}
 
 	private async actSendMessageToAdapter(event: CompanionActionEvent): Promise<void> {

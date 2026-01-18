@@ -300,6 +300,38 @@ export class IoBrokerWsClient implements IioBrokerClient {
 		return res
 	}
 
+	/** {@inheritDoc IioBrokerClient.getState} */
+	public async getState(iobId: string, type?: ioBroker.CommonType): Promise<ioBroker.State | null> {
+		if (!this.ensureClient(this.client)) {
+			return null
+		}
+
+		const stateMeta = await this.getObject(iobId)
+
+		if (stateMeta === null || (type && stateMeta.common.type !== type)) {
+			this._logger.logWarning(
+				`Expectation not met: State should have type ${type} but ${stateMeta?.common.type ?? 'N/A'} was retrieved from the server.`,
+			)
+			return null
+		}
+
+		const stateVal = await this.client.getState(iobId)
+
+		if (stateVal === null || stateVal === undefined) {
+			this._logger.logWarning(`State value for id ${iobId} is null or undefined.`)
+			return null
+		}
+
+		if (typeof stateVal.val !== type) {
+			this._logger.logWarning(
+				`Expectation not met: State value should be of type ${type} but is of type ${typeof stateVal.val}.`,
+			)
+			return null
+		}
+
+		return stateVal
+	}
+
 	/** {@inheritDoc IioBrokerClient.setState} */
 	public async setState(iobId: string, val: ioBroker.StateValue, type?: ioBroker.CommonType): Promise<void> {
 		if (!this.ensureClient(this.client)) {
