@@ -21,7 +21,7 @@ const requireJsDocConfiguration = {
 	},
 	rules: {
 		'jsdoc/require-jsdoc': [
-			'warn',
+			'error',
 			{
 				publicOnly: {
 					ancestorsOnly: true, // Checks exported/public modifiers
@@ -43,7 +43,7 @@ const verifyTsDocStructure = {
 		tsdoc,
 	},
 	rules: {
-		'tsdoc/syntax': 'warn',
+		'tsdoc/syntax': 'error',
 	},
 }
 
