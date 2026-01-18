@@ -22,20 +22,33 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 
 	private touchLastChangedFeedbacksTimeout: NodeJS.Timeout | null = null
 
+	/**
+	 *
+	 */
 	constructor(internal: unknown) {
 		super(internal)
 
 		this._diContainer = DependencyRegistry.CreateRegistry(this, this.getConfig.bind(this)).Build()
 	}
 
+	/**
+	 *
+	 */
 	public checkFeedbacks(...feedbackTypes: FeedbackType[]): void {
 		super.checkFeedbacks(...feedbackTypes)
 	}
 
+	/**
+	 * Test ts-doc linter
+	 * @param feedbackIds - feedbackIds
+	 */
 	public checkFeedbacksByIdAsCb(feedbackIds: string[]): void {
 		super.checkFeedbacksById(...feedbackIds)
 	}
 
+	/**
+	 *
+	 */
 	async init(config: ModuleConfig): Promise<void> {
 		this.config = config
 
@@ -52,6 +65,9 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 	}
 
 	// When module gets deleted
+	/**
+	 *
+	 */
 	async destroy(): Promise<void> {
 		try {
 			await this.disconnectAsync()
@@ -80,6 +96,9 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		await wsClient.disconnectAsync(this.updateStatus.bind(this))
 	}
 
+	/**
+	 *
+	 */
 	async configUpdated(config: ModuleConfig): Promise<void> {
 		this.log('debug', 'Received config update.')
 
@@ -96,30 +115,51 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 		this.checkFeedbacks(FeedbackType.ReadLastUpdated)
 	}
 
+	/**
+	 *
+	 */
 	getConfig(): ModuleConfig {
 		return this.config
 	}
 
+	/**
+	 *
+	 */
 	getConfigFields(): SomeCompanionConfigField[] {
 		return GetConfigFields()
 	}
 
+	/**
+	 *
+	 */
 	updateActions(): void {
 		this.getActionConfiguration().updateActions(this.setActionDefinitions.bind(this))
 	}
 
+	/**
+	 *
+	 */
 	updateFeedbacks(): void {
 		this.getFeedbackConfiguration().updateFeedbacks(this.setFeedbackDefinitions.bind(this))
 	}
 
+	/**
+	 *
+	 */
 	updatePresets(): void {
 		UpdatePresets(this)
 	}
 
+	/**
+	 *
+	 */
 	updateVariableDefinitions(): void {
 		UpdateVariableDefinitions(this)
 	}
 
+	/**
+	 *
+	 */
 	updateModuleConfigurations(): void {
 		this.updateActions()
 		this.updateFeedbacks()
