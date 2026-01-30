@@ -31,7 +31,7 @@
 		"tsyringe": "^4.10.0"
 	},
 	"devDependencies": {
-		"@companion-module/tools": "^2.5.0",
+		"@companion-module/tools": "^2.6.1",
 		"@iobroker/types": "^7.1.0",
 		"@types/node": "^22.19.3",
 		"eslint": "^9.39.2",
