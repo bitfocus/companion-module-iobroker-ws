@@ -63,6 +63,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			label: 'Additional Namespace (CSV)',
 			width: 8,
 			regex: '^[\\w\\d][\\w\\d\\.]+[\\w\\d]$',
+			default: '',
 		},
 		{
 			type: 'checkbox',
