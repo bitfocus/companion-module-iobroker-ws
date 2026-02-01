@@ -164,7 +164,7 @@ export class IoBrokerWsClient implements IioBrokerClient {
 
 	private getObjectSubscriptions(): string[] {
 		const config = this._configAccessor()
-		const namespaces = config.additionalNamespaces
+		const namespaces = (config.additionalNamespaces ?? '')
 			.split(',')
 			.map((i) => i.trim())
 			.filter((i) => i.length > 0)
